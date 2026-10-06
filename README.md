@@ -1,6 +1,6 @@
 # Validación de cotizaciones LFH
 
-Registro de cotizaciones del Liceo Franco Hondureño con doble firma verificada.
+Registro de cotizaciones y solicitudes de pago de tarjeta del Liceo Franco Hondureño, con doble firma verificada.
 
 - Página: `https://dafadjunto-504.github.io/validacion-cotizaciones/`
 - Servidor y datos: Google Apps Script, hoja de cálculo y carpeta Drive de la cuenta **daf.adjunto@liceofranco.org**
@@ -17,6 +17,20 @@ Registro de cotizaciones del Liceo Franco Hondureño con doble firma verificada.
 | Integridad | Huella SHA-256 de cada cotización y de su archivo, sello HMAC de cada firma. Una modificación hecha a mano en la hoja anula las firmas afectadas. |
 | Anulación | Quien registró o un administrador, mientras la cotización no esté validada. |
 | Trazabilidad | Hoja `Bitacora` con cada acción. |
+
+## Tipos de documento
+
+| Tipo | Folio | Qué se registra |
+|---|---|---|
+| Cotización | `COT-AAAA-0001` | Proveedor, objeto, monto, moneda, fecha, área y el PDF de la cotización. |
+| Pago de tarjeta | `PTC-AAAA-0001` | Entidad, tarjeta (marca y últimos 4 dígitos), período, fecha de corte, líneas de gasto en lempiras y en dólares, y el escaneo de la carta firmada. |
+
+Para un pago de tarjeta, las líneas se pegan desde Excel. Formato aceptado (columnas separadas por tabulaciones, sin encabezado):
+
+- 7 columnas: fecha, proveedor, gasto por cuenta, valor total, cuenta contable, descripción, observación. Si la columna "gasto por cuenta" tiene un monto, ese monto se usa (caso de un cargo repartido entre dos cuentas); si contiene texto (por ejemplo DEVOLUCION), se muestra como nota.
+- 6 columnas: fecha, proveedor, monto, cuenta contable, descripción, observación.
+
+La página calcula los totales por moneda y el resumen por cuenta contable, y la constancia impresa reproduce el detalle y el resumen con el recuadro de validaciones (una casilla por cargo, con visto y nombre del firmante). Las líneas forman parte de la huella: cambiar una línea en la hoja anula las firmas.
 
 ## Correos automáticos
 
@@ -112,6 +126,7 @@ Hacen falta tres cuentas: la suya (o la de Karen) y dos de las tres validadoras.
 
 - **Cambiar una validadora o un registrador:** editar la propiedad correspondiente del script. Efecto inmediato, sin volver a publicar. Las firmas ya hechas conservan el cargo registrado al firmar.
 - **Cambiar los horarios de envío:** modificar `HORA_SEMANAL` o `HORA_DIARIO` al inicio de `Code.gs` y volver a ejecutar `instalarEnvios`.
+- **Actualizar el código del servidor:** reemplazar el contenido de `Code.gs`, guardar y ejecutar `setup` una vez (actualiza los encabezados de la hoja sin tocar los datos). Luego publicar una nueva versión como se indica abajo.
 - **Modificar el código del servidor:** después de guardar `Code.gs`, ir a **Implementar > Gestionar implementaciones**, editar la implementación existente y elegir **Nueva versión**. Así la URL no cambia.
 - **Copia de seguridad:** la hoja de registro puede descargarse en Excel desde Drive. El historial de versiones de la hoja muestra quién la abrió y modificó.
 

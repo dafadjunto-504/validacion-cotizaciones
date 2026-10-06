@@ -135,6 +135,40 @@ form.reg{display:grid;gap:14px}
 footer.how{font-size:.85rem;color:var(--muted);max-width:80ch;display:grid;gap:6px;border-top:1px solid var(--line);padding-top:14px}
 footer.how p{margin:0}
 #print{display:none}
+
+/* Validaciones: una casilla por cargo */
+.vistos{display:grid;gap:8px}
+.visto{display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1.3fr);gap:4px 12px;align-items:center;border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;background:var(--bg)}
+.visto .caja{width:26px;height:26px;border:2px solid var(--line);border-radius:5px;display:grid;place-items:center;background:var(--surface)}
+.visto .caja svg{width:16px;height:16px}
+.visto.ok{border-color:var(--ok)} .visto.ok .caja{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+.visto.bad{border-color:var(--bad)} .visto.bad .caja{border-color:var(--bad);color:var(--bad);background:var(--bad-bg)}
+.visto.broken{border-color:var(--warn)} .visto.broken .caja{border-color:var(--warn);color:var(--warn)}
+.visto.pend{border-style:dashed}
+.visto .vc,.visto .vd{display:grid;min-width:0;line-height:1.3}
+.visto .vc span,.visto .vd span{overflow-wrap:anywhere;font-size:.86rem}
+.visto .comment{grid-column:2/-1}
+@media (max-width:560px){.visto{grid-template-columns:30px minmax(0,1fr)} .visto .vd{grid-column:2}}
+
+/* Tablas de detalle y resumen */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table.dt{border-collapse:collapse;width:100%;font-size:.84rem;min-width:680px}
+table.dt.resumen{min-width:420px}
+.dt th,.dt td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.dt thead th{background:var(--sunk);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.dt tfoot td{font-weight:600;border-bottom:0;background:var(--sunk)}
+.dt .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dt .nowrap{white-space:nowrap}
+.tag{display:inline-block;margin-left:6px;font-size:.7rem;font-weight:600;letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:var(--warn-bg);color:var(--warn)}
+.detalle-tc{display:grid;gap:20px}
+.detalle-tc .bloque{display:grid;gap:8px}
+.captura{display:grid;gap:10px;border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--bg)}
+.captura .pegado{min-height:70px;font-family:var(--f-mono);font-size:.8rem}
+.captura details{font-size:.88rem}
+.captura summary{cursor:pointer;color:var(--accent)}
+.manual{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:8px 0}
+.manual input{padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);min-width:0}
+form.reg .seg{justify-self:start}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
 /* Constancia imprimible */
@@ -148,6 +182,18 @@ footer.how p{margin:0}
   #print th{background:#eee}
   #print .mono{font-family:"IBM Plex Mono",Consolas,monospace;font-size:8.5pt;word-break:break-all}
   #print .sello{display:inline-block;border:3px double;padding:3pt 10pt;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;margin:6pt 0}
+  #print h2{font-size:12pt;margin:12pt 0 4pt}
+  #print .salto{break-before:page}
+  #print .tw{border:0}
+  #print table.dt{min-width:0;font-size:8.5pt}
+  #print .dt thead th,#print .dt tfoot td{background:#eee;color:#000}
+  #print .dt .num{text-align:right}
+  #print .casilla{width:26pt;text-align:center}
+  #print .cuadro{display:inline-block;width:14pt;height:14pt;line-height:14pt;border:1.5pt solid #000;font-size:12pt;font-weight:bold;text-align:center}
+  #print tfoot{display:table-row-group}
+  #print table.vist .mono{white-space:nowrap}
+  #print .tag{border:1px solid #999;background:none;color:#000}
+  @page{margin:14mm}
   #print .pie{font-size:9pt;color:#444}
 }
 </style>
@@ -159,7 +205,7 @@ footer.how p{margin:0}
     <div class="brand">
       <span class="eyebrow">Liceo Franco Hondureño · Administración y Finanzas</span>
       <h1>Validación de cotizaciones</h1>
-      <span class="muted">Cada cotización requiere dos firmas entre protesorera, tesorera y presidencia.</span>
+      <span class="muted">Cotizaciones y solicitudes de pago de tarjeta: dos vistos buenos entre protesorera, tesorera y presidencia.</span>
     </div>
     <div class="who" id="who" hidden>
       <img id="whoImg" alt="" referrerpolicy="no-referrer">
@@ -183,7 +229,7 @@ footer.how p{margin:0}
         <div class="seg" role="group" aria-label="Filtrar por estado" id="seg"></div>
         <input class="search" id="q" type="search" placeholder="Buscar proveedor, objeto o folio" aria-label="Buscar">
         <button class="btn" id="reload" type="button">Actualizar</button>
-        <button class="btn primary" id="newBtn" type="button" hidden>Registrar cotización</button>
+        <button class="btn primary" id="newBtn" type="button" hidden>Registrar documento</button>
       </div>
       <div class="main">
         <div class="list" id="list" aria-label="Cotizaciones registradas"></div>
@@ -194,9 +240,9 @@ footer.how p{margin:0}
 
   <footer class="how">
     <h3>Cómo funciona la firma</h3>
-    <p>Cada persona entra con su cuenta Google del Liceo: nadie escribe su nombre a mano y nadie puede firmar en lugar de otra persona. Solo firman la protesorera, la tesorera y la presidencia; una cotización queda validada con dos aprobaciones.</p>
-    <p>Las cotizaciones registradas se envían a las validadoras en un resumen cada miércoles. Cada día a las 18:00 sale un correo con las firmas del día, si las hubo.</p>
-    <p>Al registrar una cotización se calcula su huella SHA-256 (datos y archivo). Cada firma guarda esa huella y un sello propio. Si alguien modifica la cotización o una firma directamente en la hoja de registro, la página lo detecta y la firma deja de contar.</p>
+    <p>Cada persona entra con su cuenta Google del Liceo: nadie escribe su nombre a mano y nadie puede firmar en lugar de otra persona. Solo firman la protesorera, la tesorera y la presidencia; un documento queda validado con dos vistos buenos.</p>
+    <p>Los documentos registrados se envían a las validadoras en un resumen cada miércoles. Cada día a las 18:00 sale un correo con las firmas del día, si las hubo.</p>
+    <p>Al registrar un documento se calcula su huella SHA-256 (datos, líneas de gasto y archivo). Cada firma guarda esa huella y un sello propio. Si alguien modifica el documento o una firma directamente en la hoja de registro, la página lo detecta y la firma deja de contar.</p>
   </footer>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -359,24 +405,114 @@ function renderSeg(){
     seg.append(h("button",{type:"button","aria-pressed":String(S.filter===k), onclick:()=>{S.filter=k; render();}}, label, h("span",{class:"n",text:String(n)})));
   }
 }
+const MONEDAS_TC = ["HNL","USD"];
+const NOMBRE_MONEDA = {HNL:"lempiras", USD:"dólares"};
+const esTC = q => q.tipo === "pago_tc";
+function montoTexto(q){
+  if (esTC(q)){
+    const t = q.totales || {};
+    const p = MONEDAS_TC.filter(m => t[m] !== undefined).map(m => fmtMoney(t[m], m));
+    if (p.length) return p.join(" + ");
+  }
+  return fmtMoney(q.monto, q.moneda);
+}
+function etiqueta(q){ return esTC(q) ? `Pago de tarjeta ${q.tarjeta || ""}, ${q.periodo || ""}`.replace(/ ,/, ",") : q.objeto; }
+function cents(n){ return Math.round(Number(n) * 100); }
+function sumar(ls){ return ls.reduce((a,l) => a + cents(l.monto), 0) / 100; }
+function resumenCuentas(ls){
+  const m = new Map();
+  for (const l of ls){
+    const k = l.cuenta || "(sin cuenta)";
+    const r = m.get(k) || {cuenta:k, descripcion:l.descripcion, c:0};
+    r.c += cents(l.monto); if (!r.descripcion) r.descripcion = l.descripcion;
+    m.set(k, r);
+  }
+  return [...m.values()].map(r => ({cuenta:r.cuenta, descripcion:r.descripcion, monto:r.c/100}));
+}
+function tablaLineas(ls, moneda, onDelete){
+  const tb = h("tbody");
+  ls.forEach((l, i) => tb.append(h("tr",null,
+    h("td",{class:"nowrap",text:l.fecha}),
+    h("td",null, l.proveedor, l.nota ? h("span",{class:"tag",text:l.nota}) : null),
+    h("td",{class:"num",text:fmtMoney(l.monto, moneda)}),
+    h("td",{class:"mono nowrap",text:l.cuenta}),
+    h("td",{text:l.descripcion}),
+    h("td",{text:l.observacion}),
+    onDelete ? h("td",null, h("button",{class:"btn ghost small",type:"button","aria-label":"Quitar línea "+(i+1),onclick:()=>onDelete(i)},"Quitar")) : null)));
+  return h("div",{class:"tw"}, h("table",{class:"dt"},
+    h("thead",null, h("tr",null, ["Fecha","Proveedor","Monto","Cuenta contable","Descripción","Observación"].concat(onDelete?[""]:[]).map(t => h("th",{text:t})))),
+    tb,
+    h("tfoot",null, h("tr",null, h("td",{colspan:"2",text:"Total ("+ls.length+" líneas)"}), h("td",{class:"num",text:fmtMoney(sumar(ls), moneda)}), h("td",{colspan: onDelete ? "4" : "3"})))));
+}
+function tablaResumen(ls, moneda){
+  const rs = resumenCuentas(ls);
+  return h("div",{class:"tw"}, h("table",{class:"dt resumen"},
+    h("thead",null, h("tr",null, ["Monto","Cuenta contable","Descripción"].map(t => h("th",{text:t})))),
+    h("tbody",null, rs.map(r => h("tr",null, h("td",{class:"num",text:fmtMoney(r.monto, moneda)}), h("td",{class:"mono",text:r.cuenta}), h("td",{text:r.descripcion})))),
+    h("tfoot",null, h("tr",null, h("td",{class:"num",text:fmtMoney(sumar(ls), moneda)}), h("td",{colspan:"2",text:"Total"})))));
+}
+function detalleTC(q){
+  const wrap = h("div",{class:"detalle-tc"});
+  for (const m of MONEDAS_TC){
+    const ls = (q.lineas || []).filter(l => l.moneda === m);
+    if (!ls.length) continue;
+    wrap.append(h("section",{class:"bloque"},
+      h("h3",{text:"Detalle de gastos en " + NOMBRE_MONEDA[m]}), tablaLineas(ls, m),
+      h("h3",{text:"Resumen por cuenta contable, " + NOMBRE_MONEDA[m]}), tablaResumen(ls, m)));
+  }
+  return wrap;
+}
+
+/* Recuadro de validaciones: una casilla por cargo, con visto cuando firma */
+function cuadroVistos(q){
+  const validas = q.firmas.filter(f => f.valida);
+  const invalidas = q.firmas.filter(f => !f.valida);
+  const cerrada = ["validada","rechazada","anulada","alterada"].includes(q.estado);
+  const filas = [], usadas = new Set();
+  for (const r of S.roles){
+    const f = r.email ? validas.find(x => x.email === r.email) : null;
+    if (f) usadas.add(f);
+    filas.push({rol:r.rol, email:r.email, f});
+  }
+  for (const f of validas) if (!usadas.has(f)) filas.push({rol:f.rol || "Firma", email:f.email, f});
+  const box = h("div",{class:"vistos"});
+  for (const x of filas){
+    const f = x.f, ok = f && f.decision === "aprobada";
+    box.append(h("div",{class:"visto " + (f ? (ok ? "ok" : "bad") : "pend")},
+      h("span",{class:"caja",role:"img","aria-label": f ? (ok ? "Visto bueno" : "Rechazo") : "Sin firma"}, f ? icon(ok ? "ok" : "bad") : null),
+      h("div",{class:"vc"}, h("strong",{text:x.rol}),
+        h("span",{class:"muted",text: f ? (f.nombre || f.email) : cerrada ? "No requerida" : x.email ? "Pendiente de firma" : "Cargo sin cuenta asignada"})),
+      h("div",{class:"vd"},
+        f ? h("span",{text:(ok ? "Aprobó" : "Rechazó") + " el " + fmtDate(f.en)}) : null,
+        h("span",{class:"muted",text: f ? f.email : (x.email || "")})),
+      f && f.comentario ? h("div",{class:"comment",text:f.comentario}) : null));
+  }
+  for (const f of invalidas) box.append(h("div",{class:"visto broken"},
+    h("span",{class:"caja",role:"img","aria-label":"Firma sin efecto"}, icon("warn")),
+    h("div",{class:"vc"}, h("strong",{text:(f.rol || "Firma") + ", sin efecto"}), h("span",{class:"muted",text:f.nombre || f.email})),
+    h("div",{class:"vd"}, h("span",{text:f.motivo}), h("span",{class:"muted",text:fmtDate(f.en)}))));
+  return h("div",{style:"display:grid;gap:10px"},
+    h("h3",{text:`Validaciones (${q.aprobaciones || 0} de ${S.requeridas} vistos buenos necesarios)`}), box);
+}
+
 function renderList(){
   const list = $("list"); list.replaceChildren();
-  if (!S.loaded){ list.append(h("div",{class:"empty"}, h("span",{text:"Cargando el registro de cotizaciones"}))); return; }
+  if (!S.loaded){ list.append(h("div",{class:"empty"}, h("span",{text:"Cargando el registro"}))); return; }
   const s = S.search.trim().toLowerCase();
-  const rows = S.quotes.filter(q => pasa(q, S.filter) && (!s || [q.folio,q.proveedor,q.objeto,q.refProveedor,q.departamento].join(" ").toLowerCase().includes(s)));
+  const rows = S.quotes.filter(q => pasa(q, S.filter) && (!s || [q.folio,q.proveedor,q.objeto,q.refProveedor,q.departamento,q.periodo,q.tarjeta].join(" ").toLowerCase().includes(s)));
   if (!S.quotes.length){
     list.append(h("div",{class:"empty"},
-      h("strong",{text:"Aún no hay cotizaciones registradas"}),
-      h("span",{text:"Registre la primera con su proveedor, objeto y monto. Después dos validadores la firman desde esta misma página."}),
-      S.yo && S.yo.puedeRegistrar && h("button",{class:"btn primary",type:"button",onclick:openNew},"Registrar cotización")));
+      h("strong",{text:"Aún no hay documentos registrados"}),
+      h("span",{text:"Registre una cotización o una solicitud de pago de tarjeta. Después dos validadoras la firman desde esta misma página."}),
+      S.yo && S.yo.puedeRegistrar && h("button",{class:"btn primary",type:"button",onclick:openNew},"Registrar documento")));
     return;
   }
-  if (!rows.length){ list.append(h("div",{class:"empty"}, h("span",{text:"Ninguna cotización coincide con el filtro."}))); return; }
+  if (!rows.length){ list.append(h("div",{class:"empty"}, h("span",{text:"Ningún documento coincide con el filtro."}))); return; }
   for (const q of rows){
     const e = ESTADOS[q.estado] || ESTADOS.pendiente;
     list.append(h("button",{class:"item",type:"button","aria-current":String(S.selected===q.id && S.mode==="view"), onclick:()=>select(q.id)},
-      h("div",{class:"row"}, h("span",{class:"prov",text:q.proveedor}), h("span",{class:"amount",text:fmtMoney(q.monto,q.moneda)})),
-      h("div",{class:"obj",text:q.objeto}),
+      h("div",{class:"row"}, h("span",{class:"prov",text:q.proveedor}), h("span",{class:"amount",text:montoTexto(q)})),
+      h("div",{class:"obj",text:etiqueta(q)}),
       h("div",{class:"row"}, h("span",{class:"mono muted",text:q.folio}), h("span",{class:"pill "+e.c,text:e.t}))));
   }
 }
@@ -390,56 +526,55 @@ function renderDetail(){
   const q = S.quotes.find(x => x.id === S.selected);
   if (!q){
     box.append(h("div",{class:"card"}, h("h3",{text:"Expediente"}),
-      h("p",{class:"muted",style:"margin:0",text: S.quotes.length ? "Seleccione una cotización de la lista para ver su detalle y sus firmas." : "Aquí aparecerá el detalle de cada cotización con sus dos casillas de firma."})));
+      h("p",{class:"muted",style:"margin:0",text: S.quotes.length ? "Seleccione un documento de la lista para ver su detalle y sus validaciones." : "Aquí aparecerá el detalle de cada documento con su recuadro de validaciones."})));
     return;
   }
   const est = ESTADOS[q.estado] || ESTADOS.pendiente;
   const card = h("article",{class:"card"});
   card.append(h("div",{class:"dhead"},
-    h("div",{class:"l"}, h("span",{class:"mono muted",text:q.folio}), h("h2",{text:q.proveedor}), h("span",{class:"pill "+est.c,text:est.t})),
+    h("div",{class:"l"}, h("span",{class:"mono muted",text:q.folio + (esTC(q) ? " · Pago de tarjeta" : " · Cotización")}), h("h2",{text:q.proveedor}), h("span",{class:"pill "+est.c,text:est.t})),
     q.estado==="validada" ? h("span",{class:"stamp ok",text:"Validada"}) : q.estado==="rechazada" ? h("span",{class:"stamp bad",text:"Rechazada"}) : null));
 
-  if (q.estado === "alterada") card.append(h("div",{class:"notice","data-kind":"bad",text:"Los datos de esta cotización ya no corresponden a la huella calculada al registrarla: alguien los modificó directamente en la hoja. Las firmas quedan sin efecto. Registre de nuevo la cotización si el cambio era legítimo."}));
-  if (q.anulada) card.append(h("div",{class:"notice",text:`Anulada el ${fmtDate(q.anulada.en)} por ${q.anulada.por}. Motivo: ${q.anulada.motivo || "no indicado"}`}));
+  if (q.estado === "alterada") card.append(h("div",{class:"notice","data-kind":"bad",text:"Los datos de este documento ya no corresponden a la huella calculada al registrarlo: alguien los modificó directamente en la hoja. Las firmas quedan sin efecto. Registre de nuevo el documento si el cambio era legítimo."}));
+  if (q.anulada) card.append(h("div",{class:"notice",text:`Anulado el ${fmtDate(q.anulada.en)} por ${q.anulada.por}. Motivo: ${q.anulada.motivo || "no indicado"}`}));
 
-  card.append(h("dl",{class:"facts"},
-    fact("Monto", h("span",{class:"amount",text:fmtMoney(q.monto,q.moneda)})),
-    fact("Referencia del proveedor", q.refProveedor || "No indicada"),
-    fact("Fecha de la cotización", fmtDay(q.fechaCotizacion)),
-    fact("Área solicitante", q.departamento || "No indicada"),
-    fact("Registrada por", `${q.creadoPorNombre || q.creadoPor}, ${fmtDate(q.creadoEn)}`)));
-  card.append(h("div",{style:"display:grid;gap:4px"}, h("h3",{text:"Objeto"}), h("p",{class:"desc",text:q.objeto})));
+  if (esTC(q)){
+    const t = q.totales || {};
+    card.append(h("dl",{class:"facts"},
+      fact("Asunto", q.objeto),
+      fact("Tarjeta", q.tarjeta || "No indicada"),
+      fact("Período", q.periodo),
+      fact("Fecha de corte", fmtDay(q.fechaCorte)),
+      ...MONEDAS_TC.filter(m => t[m] !== undefined).map(m => fact("Total en " + NOMBRE_MONEDA[m], h("span",{class:"amount",text:fmtMoney(t[m], m)}))),
+      fact("Registrada por", `${q.creadoPorNombre || q.creadoPor}, ${fmtDate(q.creadoEn)}`)));
+  } else {
+    card.append(h("dl",{class:"facts"},
+      fact("Monto", h("span",{class:"amount",text:fmtMoney(q.monto,q.moneda)})),
+      fact("Referencia del proveedor", q.refProveedor || "No indicada"),
+      fact("Fecha de la cotización", fmtDay(q.fechaCotizacion)),
+      fact("Área solicitante", q.departamento || "No indicada"),
+      fact("Registrada por", `${q.creadoPorNombre || q.creadoPor}, ${fmtDate(q.creadoEn)}`)));
+    card.append(h("div",{style:"display:grid;gap:4px"}, h("h3",{text:"Objeto"}), h("p",{class:"desc",text:q.objeto})));
+  }
 
   const docs = h("div",{class:"actions"});
   const verif = h("span");
   if (q.tieneArchivo) docs.append(h("button",{class:"btn small",type:"button",onclick:ev=>abrirArchivo(q, ev.currentTarget, verif)}, "Abrir " + (q.archivoNombre || "documento")), verif);
   if (q.enlace) docs.append(h("a",{class:"btn small",href:q.enlace,target:"_blank",rel:"noopener noreferrer"},"Abrir enlace del documento"));
-  if (docs.childNodes.length) card.append(h("div",{style:"display:grid;gap:6px"}, h("h3",{text:"Documento"}), docs));
+  card.append(h("div",{style:"display:grid;gap:6px"}, h("h3",{text: esTC(q) ? "Escaneo de la carta firmada" : "Documento"}),
+    docs.childNodes.length ? docs : h("span",{class:"muted",style:"font-size:.88rem",text:"No se adjuntó ningún archivo."})));
 
-  const validas = q.firmas.filter(f => f.valida);
-  const invalidas = q.firmas.filter(f => !f.valida);
-  const cerrada = ["validada","rechazada","anulada","alterada"].includes(q.estado);
-  const slots = h("div",{class:"slots"});
-  const usadas = new Set();
-  for (const r of S.roles){
-    const f = r.email && validas.find(x => x.email === r.email);
-    if (f){ usadas.add(f); slots.append(slotFirmado(r.rol, f)); continue; }
-    slots.append(h("div",{class:"slot empty-slot"},
-      h("div",{class:"lbl"}, h("span",{text:r.rol}), h("span",{text: cerrada ? "No requerida" : "Pendiente"})),
-      h("span",{class:"muted",style:"font-size:.88rem",text: !r.email ? "Cargo sin cuenta asignada." : cerrada ? "La cotización ya está cerrada." : "Puede firmar: " + r.email})));
-  }
-  for (const f of validas) if (!usadas.has(f)) slots.append(slotFirmado(f.rol || "Firma", f));
-  for (const f of invalidas) slots.append(slotFirmado("Firma sin efecto", f));
-  card.append(h("div",{style:"display:grid;gap:10px"},
-    h("h3",{text:`Firmas (${q.aprobaciones || 0} de ${S.requeridas} aprobaciones necesarias)`}), slots));
+  card.append(cuadroVistos(q));
 
   const yo = S.yo.email;
   const abierta = q.estado === "pendiente" || q.estado === "parcial";
   if (abierta){
-    if (q.creadoPor === yo) card.append(h("div",{class:"notice","data-kind":"info",text:"Usted registró esta cotización, por lo que no puede firmarla. La validan otras dos personas."}));
-    else if (q.firmas.some(f => f.email === yo)) card.append(h("div",{class:"notice","data-kind":"ok",text:"Usted ya firmó esta cotización. Falta otra firma para completar la validación."}));
+    if (q.creadoPor === yo) card.append(h("div",{class:"notice","data-kind":"info",text:"Usted registró este documento, por lo que no puede firmarlo. Lo validan otras dos personas."}));
+    else if (q.firmas.some(f => f.email === yo)) card.append(h("div",{class:"notice","data-kind":"ok",text:"Usted ya firmó este documento. Falta otra firma para completar la validación."}));
     else if (S.yo.puedeValidar) card.append(panelFirma(q));
   }
+
+  if (esTC(q)) card.append(detalleTC(q));
 
   card.append(h("div",{class:"integrity"},
     h("h3",{text:"Integridad"}),
@@ -448,26 +583,15 @@ function renderDetail(){
     q.archivoSha256 ? h("div",{class:"mono hash muted",text:`Archivo ${q.archivoNombre}: ${q.archivoSha256}`}) : null));
 
   const acts = h("div",{class:"actions"});
-  if (q.estado === "validada" || q.estado === "rechazada") acts.append(h("button",{class:"btn",type:"button",onclick:()=>imprimirConstancia(q)},"Imprimir constancia"));
+  const cerrado = q.estado === "validada" || q.estado === "rechazada";
+  if (cerrado || esTC(q)) acts.append(h("button",{class:"btn",type:"button",onclick:()=>imprimirConstancia(q)}, cerrado ? "Imprimir constancia" : "Imprimir detalle"));
   const puedoAnular = !q.anulada && q.estado !== "validada" && (q.creadoPor === yo || S.yo.esAdmin);
-  if (puedoAnular && !S.voidDraft) acts.append(h("button",{class:"btn bad small",type:"button",onclick:()=>{S.voidDraft={}; render();}},"Anular cotización"));
+  if (puedoAnular && !S.voidDraft) acts.append(h("button",{class:"btn bad small",type:"button",onclick:()=>{S.voidDraft={}; render();}},"Anular documento"));
   if (acts.childNodes.length) card.append(acts);
   if (puedoAnular && S.voidDraft) card.append(panelAnular(q));
   box.append(card);
 }
 function fact(label, val){ return h("div",null, h("dt",{text:label}), h("dd",null, val)); }
-function slotFirmado(titulo, f){
-  const ok = f.decision === "aprobada";
-  const cls = !f.valida ? "broken" : ok ? "ok" : "bad";
-  return h("div",{class:"slot "+cls},
-    h("div",{class:"lbl"}, h("span",{text:titulo}), h("span",{style:"color:var(--"+(f.valida?(ok?"ok":"bad"):"warn")+")",text: ok ? "Aprobada" : "Rechazada"})),
-    h("div",{class:"person"}, avatar(f.nombre, f.email), h("div",{class:"t"}, h("span",{text:f.nombre || f.email}), h("span",{text:f.email}))),
-    h("span",{class:"mono muted",text:fmtDate(f.en)}),
-    f.valida
-      ? h("div",{class:"check"}, icon("ok"), h("span",{text:"Cuenta verificada por Google, huella y sello correctos."}))
-      : h("div",{class:"check warn"}, icon("warn"), h("span",{text:f.motivo + " No cuenta."})),
-    f.comentario ? h("div",{class:"comment",text:f.comentario}) : null);
-}
 
 /* ---------- firmar ---------- */
 function panelFirma(q){
@@ -475,13 +599,13 @@ function panelFirma(q){
   const err = h("div",{class:"err",role:"alert"});
   const btn = h("button",{class:"btn "+(d.decision==="aprobada"?"ok":"bad"),type:"button",id:"signBtn",onclick:async()=>{
     err.textContent = "";
-    if (!d.ack){ err.textContent = "Confirme que revisó la cotización y el documento."; return; }
+    if (!d.ack){ err.textContent = "Confirme que revisó el documento y su archivo."; return; }
     if (d.decision === "rechazada" && !d.comentario.trim()){ err.textContent = "Indique el motivo del rechazo."; return; }
     btn.disabled = true; btn.textContent = "Registrando firma";
     try {
       const r = await api("firmar", {id:q.id, decision:d.decision, comentario:d.comentario, huella:q.huella});
       S.signDraft = null;
-      toast(r.estado === "validada" ? "Firma registrada. La cotización quedó validada." : d.decision === "aprobada" ? "Firma registrada" : "Rechazo registrado");
+      toast(r.estado === "validada" ? "Firma registrada. El documento quedó validado." : d.decision === "aprobada" ? "Firma registrada" : "Rechazo registrado");
       await cargar();
     } catch(e){ err.textContent = msgError(e); btn.disabled = false; btn.textContent = d.decision==="aprobada" ? "Firmar y aprobar" : "Firmar el rechazo"; }
   }}, d.decision==="aprobada" ? "Firmar y aprobar" : "Firmar el rechazo");
@@ -493,7 +617,7 @@ function panelFirma(q){
     h("div",{class:"field"}, h("label",{for:"f_com",text: d.decision==="rechazada" ? "Motivo del rechazo" : "Comentario (opcional)"}),
       h("textarea",{id:"f_com",maxlength:"1000",oninput:e=>{d.comentario=e.target.value;}}, d.comentario)),
     h("label",{class:"ack"}, h("input",{type:"checkbox",id:"f_ack",checked:d.ack,onchange:e=>{d.ack=e.target.checked;}}),
-      h("span",{text:"Declaro haber revisado esta cotización y su documento. Entiendo que mi firma queda registrada con fecha, hora y huella del documento."})),
+      h("span",{text:"Declaro haber revisado este documento y su archivo adjunto. Entiendo que mi firma queda registrada con fecha, hora y huella del documento."})),
     h("div",{class:"actions"}, btn), err);
 }
 
@@ -502,7 +626,7 @@ function panelAnular(q){
   const err = h("div",{class:"err",role:"alert"});
   const ta = h("textarea",{id:"f_void",maxlength:"500",placeholder:"Ejemplo: el proveedor retiró la oferta"});
   return h("div",{class:"sign",style:"border-color:var(--bad);background:var(--bad-bg)"},
-    h("h3",{text:"Anular cotización"}),
+    h("h3",{text:"Anular documento"}),
     h("div",{class:"field"}, h("label",{for:"f_void",text:"Motivo de la anulación"}), ta),
     h("div",{class:"actions"},
       h("button",{class:"btn bad",type:"button",onclick:async ev=>{
@@ -517,54 +641,151 @@ function panelAnular(q){
 }
 
 /* ---------- registrar ---------- */
+function num(s){
+  s = String(s == null ? "" : s).replace(/[^\d,.\-]/g, "");
+  if (!/\d/.test(s)) return NaN;
+  const lc = s.lastIndexOf(","), ld = s.lastIndexOf(".");
+  if (lc > ld && s.length - lc - 1 === 2) s = s.replace(/\./g, "").replace(",", ".");
+  else s = s.replace(/,/g, "");
+  return Number(s);
+}
+/* Filas copiadas de Excel. 7 columnas: fecha, proveedor, gasto por cuenta, valor total, cuenta, descripción, observación.
+   6 columnas: fecha, proveedor, monto, cuenta, descripción, observación. */
+function parsePegado(texto, moneda){
+  const lineas = []; let omitidas = 0;
+  for (const raw of String(texto || "").split(/\r?\n/)){
+    if (!raw.trim()) continue;
+    const c = raw.split("\t").map(x => x.trim());
+    let l;
+    if (c.length >= 7){
+      const b = num(c[2]), v = num(c[3]);
+      const monto = b > 0 ? b : v;
+      l = {fecha:c[0], proveedor:c[1], monto, cuenta:c[4], descripcion:c[5], observacion:c[6], nota: c[2] && isNaN(b) ? c[2] : ""};
+    } else if (c.length >= 4){
+      l = {fecha:c[0], proveedor:c[1], monto:num(c[2]), cuenta:c[3], descripcion:c[4] || "", observacion:c[5] || "", nota:""};
+    } else { omitidas++; continue; }
+    if (!isFinite(l.monto) || (!l.cuenta && !l.proveedor && !l.fecha)){ omitidas++; continue; }
+    l.monto = Math.round(l.monto * 100) / 100;
+    l.moneda = moneda;
+    lineas.push(l);
+  }
+  return {lineas, omitidas};
+}
+
 function formNew(){
+  const tipo = S.nuevoTipo || "cotizacion";
   const err = h("div",{class:"err",role:"alert"});
   const fld = (id, label, input, hint) => h("div",{class:"field"}, h("label",{for:id,text:label}), input, hint ? h("span",{class:"hint",text:hint}) : null);
   const t = new Date();
   const hoy = t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
   const form = h("form",{class:"reg card",novalidate:true});
-  form.append(
-    h("div",{class:"dhead"}, h("h2",{text:"Registrar cotización"}), h("button",{class:"btn small",type:"button",onclick:()=>{S.mode="view"; render();}},"Cancelar")),
-    h("div",{class:"grid2"},
-      fld("f_prov","Proveedor", h("input",{id:"f_prov",required:true,maxlength:"160",autocomplete:"organization"})),
-      fld("f_ref","N.º de cotización del proveedor", h("input",{id:"f_ref",maxlength:"80"}))),
-    fld("f_obj","Objeto de la cotización", h("textarea",{id:"f_obj",required:true,maxlength:"2000",placeholder:"Ejemplo: mantenimiento de aires acondicionados, edificio de secundaria"})),
-    h("div",{class:"grid2"},
-      fld("f_monto","Monto total", h("input",{id:"f_monto",type:"number",step:"0.01",min:"0",required:true,inputmode:"decimal"})),
-      fld("f_mon","Moneda", h("select",{id:"f_mon"}, h("option",{value:"HNL",text:"Lempiras (HNL)"}), h("option",{value:"USD",text:"Dólares (USD)"}), h("option",{value:"EUR",text:"Euros (EUR)"}))),
-      fld("f_fecha","Fecha de la cotización", h("input",{id:"f_fecha",type:"date",value:hoy})),
-      fld("f_dep","Área solicitante", h("input",{id:"f_dep",maxlength:"120",placeholder:"Ejemplo: Intendencia"}))),
-    fld("f_file","Documento de la cotización (PDF, PNG o JPG)", h("input",{id:"f_file",type:"file",accept:"application/pdf,image/png,image/jpeg"}), "Se guarda en el Drive de la administración y se calcula su huella. Máximo 10 MB."),
-    fld("f_link","Enlace al documento (opcional)", h("input",{id:"f_link",type:"url",placeholder:"https://drive.google.com/...",maxlength:"500"})),
-    h("div",{class:"actions"}, h("button",{class:"btn primary",type:"submit",id:"f_submit"},"Registrar")),
-    err);
+  const selTipo = h("div",{class:"seg",role:"radiogroup","aria-label":"Tipo de documento"},
+    [["cotizacion","Cotización"],["pago_tc","Pago de tarjeta"]].map(([v,l]) => h("button",{type:"button",role:"radio","aria-checked":String(tipo===v),"aria-pressed":String(tipo===v),onclick:()=>{S.nuevoTipo=v; render();}}, l)));
+  form.append(h("div",{class:"dhead"}, h("h2",{text:"Registrar documento"}), h("button",{class:"btn small",type:"button",onclick:()=>{S.mode="view"; S.borrador=null; render();}},"Cancelar")), selTipo);
+
+  if (tipo === "pago_tc"){
+    if (!S.borrador) S.borrador = {HNL:[], USD:[], campos:{f_prov:"Bac Credomatic Honduras", f_obj:"Solicitud de pago de TC"}, archivo:null};
+    const C = S.borrador.campos;
+    const inp = (id, attrs) => h("input", Object.assign({id, value: C[id] || "", oninput: e => { C[id] = e.target.value; }}, attrs));
+    const archivo = h("input",{id:"f_file",type:"file",accept:"application/pdf,image/png,image/jpeg",onchange:e => { S.borrador.archivo = e.target.files[0] || null; }});
+    if (S.borrador.archivo){ try { const dt = new DataTransfer(); dt.items.add(S.borrador.archivo); archivo.files = dt.files; } catch {} }
+    form.append(
+      h("div",{class:"grid2"},
+        fld("f_prov","Entidad bancaria", inp("f_prov",{maxlength:"160"})),
+        fld("f_obj","Asunto", inp("f_obj",{maxlength:"200"}))),
+      h("div",{class:"grid2"},
+        fld("f_tarj","Tarjeta", inp("f_tarj",{maxlength:"40",placeholder:"VISA 4766"}), "Solo la marca y los últimos 4 dígitos."),
+        fld("f_per","Período del estado de cuenta", inp("f_per",{maxlength:"40",placeholder:"Septiembre 2026"})),
+        fld("f_corte","Fecha de corte", inp("f_corte",{type:"date"}))));
+    for (const m of MONEDAS_TC) form.append(bloqueCaptura(m));
+    form.append(
+      fld("f_file","Escaneo de la carta firmada (PDF)", archivo, "La carta al banco con las firmas autorizadas. Máximo 10 MB."),
+      fld("f_link","Enlace al documento (opcional)", inp("f_link",{type:"url",placeholder:"https://drive.google.com/...",maxlength:"500"})));
+  } else {
+    form.append(
+      h("div",{class:"grid2"},
+        fld("f_prov","Proveedor", h("input",{id:"f_prov",required:true,maxlength:"160",autocomplete:"organization"})),
+        fld("f_ref","N.º de cotización del proveedor", h("input",{id:"f_ref",maxlength:"80"}))),
+      fld("f_obj","Objeto de la cotización", h("textarea",{id:"f_obj",required:true,maxlength:"2000",placeholder:"Ejemplo: mantenimiento de aires acondicionados, edificio de secundaria"})),
+      h("div",{class:"grid2"},
+        fld("f_monto","Monto total", h("input",{id:"f_monto",type:"number",step:"0.01",min:"0",required:true,inputmode:"decimal"})),
+        fld("f_mon","Moneda", h("select",{id:"f_mon"}, h("option",{value:"HNL",text:"Lempiras (HNL)"}), h("option",{value:"USD",text:"Dólares (USD)"}), h("option",{value:"EUR",text:"Euros (EUR)"}))),
+        fld("f_fecha","Fecha de la cotización", h("input",{id:"f_fecha",type:"date",value:hoy})),
+        fld("f_dep","Área solicitante", h("input",{id:"f_dep",maxlength:"120",placeholder:"Ejemplo: Intendencia"}))),
+      fld("f_file","Documento de la cotización (PDF, PNG o JPG)", h("input",{id:"f_file",type:"file",accept:"application/pdf,image/png,image/jpeg"}), "Se guarda en el Drive de la administración y se calcula su huella. Máximo 10 MB."),
+      fld("f_link","Enlace al documento (opcional)", h("input",{id:"f_link",type:"url",placeholder:"https://drive.google.com/...",maxlength:"500"})));
+  }
+  form.append(h("div",{class:"actions"}, h("button",{class:"btn primary",type:"submit",id:"f_submit"},"Registrar")), err);
+
   form.addEventListener("submit", async ev => {
     ev.preventDefault(); err.textContent = "";
     const v = id => ($(id) && $(id).value || "").trim();
-    const monto = parseFloat(v("f_monto"));
-    if (!v("f_prov")){ err.textContent = "Indique el proveedor."; return; }
-    if (!v("f_obj")){ err.textContent = "Describa el objeto de la cotización."; return; }
-    if (!(monto >= 0)){ err.textContent = "Indique un monto válido."; return; }
     const link = v("f_link");
     if (link && !/^https:\/\//i.test(link)){ err.textContent = "El enlace debe empezar por https://"; return; }
+    let payload;
+    if (tipo === "pago_tc"){
+      const lineas = S.borrador.HNL.concat(S.borrador.USD);
+      if (!v("f_per")){ err.textContent = "Indique el período del estado de cuenta."; return; }
+      if (/\d{7,}/.test(v("f_tarj").replace(/[\s.\-]/g,""))){ err.textContent = "Para la tarjeta indique solo la marca y los últimos 4 dígitos."; return; }
+      if (!lineas.length){ err.textContent = "Agregue al menos una línea de gasto."; return; }
+      payload = {tipo, proveedor:v("f_prov"), objeto:v("f_obj"), tarjeta:v("f_tarj"), periodo:v("f_per"), fechaCorte:v("f_corte"), enlace:link, lineas};
+    } else {
+      const monto = parseFloat(v("f_monto"));
+      if (!v("f_prov")){ err.textContent = "Indique el proveedor."; return; }
+      if (!v("f_obj")){ err.textContent = "Describa el objeto de la cotización."; return; }
+      if (!(monto >= 0)){ err.textContent = "Indique un monto válido."; return; }
+      payload = {tipo, proveedor:v("f_prov"), refProveedor:v("f_ref"), objeto:v("f_obj"), monto, moneda:v("f_mon"), fechaCotizacion:v("f_fecha"), departamento:v("f_dep"), enlace:link};
+    }
     const btn = $("f_submit"); btn.disabled = true; btn.textContent = "Registrando";
     try {
-      let archivo = null;
-      const file = $("f_file").files[0];
+      const file = $("f_file").files[0] || (tipo === "pago_tc" && S.borrador && S.borrador.archivo) || null;
       if (file){
         if (file.size > 10*1024*1024) throw new Error("El archivo supera 10 MB.");
-        const tipo = /\.pdf$/i.test(file.name) ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : file.type;
-        archivo = {nombre:file.name, tipo, base64: await fileToBase64(file)};
+        const ftipo = /\.pdf$/i.test(file.name) ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : file.type;
+        payload.archivo = {nombre:file.name, tipo:ftipo, base64: await fileToBase64(file)};
       }
-      const r = await api("registrar", {
-        proveedor:v("f_prov"), refProveedor:v("f_ref"), objeto:v("f_obj"), monto,
-        moneda:v("f_mon"), fechaCotizacion:v("f_fecha"), departamento:v("f_dep"), enlace:link, archivo
-      });
-      S.mode = "view"; S.selected = r.id; toast("Cotización " + r.folio + " registrada");
+      const r = await api("registrar", payload);
+      S.mode = "view"; S.selected = r.id; S.borrador = null; toast("Documento " + r.folio + " registrado");
       await cargar();
     } catch(e){ err.textContent = msgError(e); btn.disabled = false; btn.textContent = "Registrar"; }
   });
   return form;
+}
+
+/* Captura de las líneas de una moneda: pegado desde Excel o línea a línea */
+function bloqueCaptura(m){
+  const ls = S.borrador[m];
+  const msg = h("span",{class:"hint",role:"status"});
+  const ta = h("textarea",{id:"p_"+m,class:"pegado",placeholder:"Copie las filas en Excel (sin el encabezado) y péguelas aquí."});
+  const manual = {};
+  const campos = [["fecha","Fecha","3/9/2026"],["proveedor","Proveedor",""],["monto","Monto","0.00"],["cuenta","Cuenta","525606120"],["descripcion","Descripción",""],["observacion","Observación",""]];
+  const filaManual = h("div",{class:"manual"}, campos.map(([k,l,ph]) => {
+    manual[k] = h("input",{id:`m_${m}_${k}`,"aria-label":l,placeholder: ph ? `${l} (${ph})` : l, inputmode: k==="monto" ? "decimal" : null});
+    return manual[k];
+  }));
+  return h("section",{class:"captura"},
+    h("div",{class:"dhead"}, h("h3",{text:"Gastos en " + NOMBRE_MONEDA[m] + " (" + m + ")"}),
+      ls.length ? h("span",{class:"amount",text:fmtMoney(sumar(ls), m)}) : null),
+    h("div",{class:"field"}, h("label",{for:"p_"+m,text:"Pegar filas desde Excel"}), ta,
+      h("span",{class:"hint",text:"Columnas: fecha, proveedor, gasto por cuenta, valor total, cuenta contable, descripción, observación. También se acepta el formato de 6 columnas sin la columna de gasto por cuenta."})),
+    h("div",{class:"actions"},
+      h("button",{class:"btn small",type:"button",onclick:()=>{
+        const r = parsePegado(ta.value, m);
+        if (!r.lineas.length){ msg.textContent = "No se reconoció ninguna línea. Revise que las columnas estén separadas por tabulaciones."; return; }
+        S.borrador[m] = ls.concat(r.lineas); render();
+        toast(r.lineas.length + " línea(s) agregada(s)" + (r.omitidas ? ", " + r.omitidas + " fila(s) ignorada(s) (encabezado o total)" : ""));
+      }},"Agregar las filas pegadas"),
+      ls.length ? h("button",{class:"btn ghost small",type:"button",onclick:()=>{ S.borrador[m] = []; render(); }},"Vaciar") : null, msg),
+    h("details",null, h("summary",{text:"Agregar una línea a mano"}), filaManual,
+      h("button",{class:"btn small",type:"button",onclick:()=>{
+        const l = {fecha:manual.fecha.value.trim(), proveedor:manual.proveedor.value.trim(), monto:num(manual.monto.value), cuenta:manual.cuenta.value.trim(),
+          descripcion:manual.descripcion.value.trim(), observacion:manual.observacion.value.trim(), nota:"", moneda:m};
+        if (!isFinite(l.monto)){ msg.textContent = "Indique un monto válido."; return; }
+        l.monto = Math.round(l.monto*100)/100;
+        S.borrador[m] = ls.concat([l]); render();
+      }},"Agregar la línea")),
+    ls.length ? tablaLineas(ls, m, i => { S.borrador[m] = ls.filter((_,j) => j !== i); render(); }) : null,
+    ls.length ? h("details",null, h("summary",{text:"Ver el resumen por cuenta contable"}), tablaResumen(ls, m)) : null);
 }
 
 /* ---------- archivo ---------- */
@@ -590,26 +811,43 @@ function imprimirConstancia(q){
   const P = $("print"); P.replaceChildren();
   const fila = (k, v) => h("tr",null, h("th",{text:k}), h("td",null, v));
   const validas = q.firmas.filter(f => f.valida);
+  const cerrado = q.estado === "validada" || q.estado === "rechazada";
+  const sello = q.estado === "validada" ? "Validada" : q.estado === "rechazada" ? "Rechazada" : "Pendiente de validación";
+  const datos = esTC(q)
+    ? [fila("Folio", q.folio), fila("Entidad", q.proveedor), fila("Asunto", q.objeto), fila("Tarjeta", q.tarjeta || "No indicada"),
+       fila("Período", q.periodo), fila("Fecha de corte", fmtDay(q.fechaCorte)), fila("Total", montoTexto(q))]
+    : [fila("Folio", q.folio), fila("Proveedor", q.proveedor), fila("N.º del proveedor", q.refProveedor || "No indicado"),
+       fila("Objeto", q.objeto), fila("Monto", fmtMoney(q.monto,q.moneda)), fila("Fecha de la cotización", fmtDay(q.fechaCotizacion)),
+       fila("Área solicitante", q.departamento || "No indicada")];
+  datos.push(fila("Registrado por", `${q.creadoPorNombre || ""} <${q.creadoPor}>, ${fmtDate(q.creadoEn)}`));
+  if (q.archivoSha256) datos.push(fila("Archivo", h("span",null, q.archivoNombre, h("br"), h("span",{class:"mono",text:"SHA-256 " + q.archivoSha256}))));
+  const filasVisto = S.roles.map(r => ({rol:r.rol, f: validas.find(x => x.email === r.email)}))
+    .concat(validas.filter(f => !S.roles.some(r => r.email === f.email)).map(f => ({rol:f.rol || "Firma", f})));
   P.append(
     h("p",{text:"Liceo Franco Hondureño · Administración y Finanzas"}),
-    h("h1",{text:"Constancia de validación de cotización"}),
-    h("div",{class:"sello",text: q.estado === "validada" ? "Validada" : "Rechazada"}),
-    h("table",null,
-      fila("Folio", q.folio), fila("Proveedor", q.proveedor), fila("N.º del proveedor", q.refProveedor || "No indicado"),
-      fila("Objeto", q.objeto), fila("Monto", fmtMoney(q.monto,q.moneda)), fila("Fecha de la cotización", fmtDay(q.fechaCotizacion)),
-      fila("Área solicitante", q.departamento || "No indicada"),
-      fila("Registrada por", `${q.creadoPorNombre || ""} <${q.creadoPor}>, ${fmtDate(q.creadoEn)}`),
-      q.archivoSha256 ? fila("Archivo", h("span",null, q.archivoNombre, h("br"), h("span",{class:"mono",text:"SHA-256 " + q.archivoSha256}))) : null,
-      q.enlace ? fila("Enlace", h("span",{class:"mono",text:q.enlace})) : null),
-    h("h2",{style:"font-size:13pt",text:"Firmas"}),
-    h("table",null,
-      h("tr",null, ["#","Cargo","Firmante","Decisión","Fecha y hora","Comentario","Sello"].map(t => h("th",{text:t}))),
-      validas.map((f,i) => h("tr",null,
-        h("td",{text:String(i+1)}), h("td",{text:f.rol || ""}), h("td",null, f.nombre, h("br"), f.email),
-        h("td",{text: f.decision === "aprobada" ? "Aprobada" : "Rechazada"}), h("td",{text:fmtDate(f.en)}),
-        h("td",{text:f.comentario || ""}), h("td",{class:"mono",text:f.sello.slice(0,16)})))),
-    h("p",{class:"mono",text:"Huella SHA-256 de la cotización: " + q.huella}),
-    h("p",{class:"pie",text:"Cada firmante se identificó con su cuenta Google @liceofranco.org. El servidor registró la huella de la cotización y un sello HMAC por firma; cualquier modificación posterior de los datos, del archivo o de las firmas las invalida. Constancia generada el " + fmtDate(new Date().toISOString()) + " por " + S.yo.email + "."}));
+    h("h1",{text: esTC(q) ? (cerrado ? "Constancia de validación: pago de tarjeta" : "Detalle de solicitud de pago de tarjeta") : "Constancia de validación de cotización"}),
+    h("div",{class:"sello",text:sello}),
+    h("table",null, datos),
+    h("h2",{text:"Validaciones"}),
+    h("table",{class:"vist"},
+      h("tr",null, ["Visto","Cargo","Firmante","Decisión","Fecha y hora","Comentario","Sello"].map(t => h("th",{text:t}))),
+      filasVisto.map(x => h("tr",null,
+        h("td",{class:"casilla"}, h("span",{class:"cuadro",text: x.f ? (x.f.decision === "aprobada" ? "✓" : "✗") : ""})),
+        h("td",{text:x.rol}),
+        h("td",null, x.f ? [x.f.nombre, h("br"), x.f.email] : (cerrado ? "No requerida" : "Pendiente")),
+        h("td",{text: x.f ? (x.f.decision === "aprobada" ? "Aprobada" : "Rechazada") : ""}),
+        h("td",{text: x.f ? fmtDate(x.f.en) : ""}),
+        h("td",{text: x.f ? (x.f.comentario || "") : ""}),
+        h("td",{class:"mono",text: x.f ? x.f.sello.slice(0,10) : ""})))));
+  if (esTC(q)) for (const m of MONEDAS_TC){
+    const ls = (q.lineas || []).filter(l => l.moneda === m);
+    if (!ls.length) continue;
+    P.append(h("h2",{class:"salto",text:"Gastos de " + q.periodo + ", en " + NOMBRE_MONEDA[m]}), tablaLineas(ls, m),
+      h("h2",{text:"Resumen de gastos por cuenta contable"}), tablaResumen(ls, m));
+  }
+  P.append(
+    h("p",{class:"mono",text:"Huella SHA-256 del documento: " + q.huella}),
+    h("p",{class:"pie",text:"Cada firmante se identificó con su cuenta Google @liceofranco.org. El servidor registró la huella del documento y un sello HMAC por firma; cualquier modificación posterior de los datos, del archivo o de las firmas las invalida. Documento generado el " + fmtDate(new Date().toISOString()) + " por " + S.yo.email + "."}));
   window.print();
 }
 

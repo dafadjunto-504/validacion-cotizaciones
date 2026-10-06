@@ -24,11 +24,16 @@ const HOJA_FIR = 'Firmas';
 const HOJA_LOG = 'Bitacora';
 const COLS_COT = ['id', 'folio', 'proveedor', 'refProveedor', 'objeto', 'monto', 'moneda', 'departamento',
   'fechaCotizacion', 'enlace', 'archivoId', 'archivoNombre', 'archivoSha256', 'creadoPor', 'creadoPorNombre',
-  'creadoEn', 'huella', 'anuladaPor', 'anuladaEn', 'motivoAnulacion'];
+  'creadoEn', 'huella', 'anuladaPor', 'anuladaEn', 'motivoAnulacion',
+  'tipo', 'periodo', 'tarjeta', 'fechaCorte', 'lineas', 'totales'];
 const COLS_FIR = ['quoteId', 'folio', 'email', 'nombre', 'rol', 'decision', 'comentario', 'en', 'huella', 'sello'];
 const COLS_LOG = ['en', 'email', 'accion', 'folio', 'detalle'];
 const CAMPOS_HUELLA = ['folio', 'proveedor', 'refProveedor', 'objeto', 'monto', 'moneda', 'departamento',
-  'fechaCotizacion', 'enlace', 'archivoSha256', 'creadoPor', 'creadoEn'];
+  'fechaCotizacion', 'enlace', 'archivoSha256', 'creadoPor', 'creadoEn',
+  'tipo', 'periodo', 'tarjeta', 'fechaCorte', 'lineas'];
+const TIPOS_DOC = { cotizacion: { prefijo: 'COT', nombre: 'Cotización' }, pago_tc: { prefijo: 'PTC', nombre: 'Pago de tarjeta' } };
+const MONEDAS_TC = ['HNL', 'USD'];
+const MAX_LINEAS = 200;
 const REQUERIDAS = 2;
 const MAX_ARCHIVO = 10 * 1024 * 1024;
 const MONEDAS = ['HNL', 'USD', 'EUR'];
@@ -68,7 +73,7 @@ function setup() {
     TESORERA: 'PENDIENTE',
     PRESIDENCIA: 'PENDIENTE',
     REGISTRADORES: 'daf.adjunto@liceofranco.org, karen.barrientos@liceofranco.org',
-    ADMINS: '',
+    ADMINS: 'PENDIENTE',
     NOTIFICAR: 'si',
     URL_PAGINA: 'https://dafadjunto-504.github.io/validacion-cotizaciones/'
   };
@@ -329,13 +334,46 @@ function publica_(q, ev) {
     enlace: q.enlace, tieneArchivo: !!q.archivoId, archivoNombre: q.archivoNombre, archivoSha256: q.archivoSha256,
     creadoPor: q.creadoPor, creadoPorNombre: q.creadoPorNombre, creadoEn: q.creadoEn, huella: q.huella,
     anulada: q.anuladaEn ? { por: q.anuladaPor, en: q.anuladaEn, motivo: q.motivoAnulacion } : null,
-    estado: ev.estado, integra: ev.integra, aprobaciones: ev.aprobaciones, firmas: ev.firmas
+    estado: ev.estado, integra: ev.integra, aprobaciones: ev.aprobaciones, firmas: ev.firmas,
+    tipo: q.tipo || 'cotizacion', periodo: q.periodo, tarjeta: q.tarjeta, fechaCorte: q.fechaCorte,
+    lineas: jsonSeguro_(q.lineas, []), totales: jsonSeguro_(q.totales, {})
   };
+}
+
+function jsonSeguro_(s, defecto) {
+  if (!s) return defecto;
+  try { return JSON.parse(s); } catch (e) { return defecto; }
+}
+
+/** Valida y normaliza las líneas de gasto de una solicitud de pago de tarjeta. */
+function lineas_(arr, txt) {
+  if (!Array.isArray(arr) || !arr.length) throw err_('bad', 'Agregue al menos una línea de gasto.');
+  if (arr.length > MAX_LINEAS) throw err_('bad', 'Máximo ' + MAX_LINEAS + ' líneas por solicitud.');
+  return arr.map(function (l, i) {
+    l = l || {};
+    const n = Number(l.monto);
+    if (!isFinite(n)) throw err_('bad', 'Monto no válido en la línea ' + (i + 1) + '.');
+    const m = String(l.moneda || '').toUpperCase();
+    if (MONEDAS_TC.indexOf(m) < 0) throw err_('bad', 'Moneda no válida en la línea ' + (i + 1) + '.');
+    return {
+      moneda: m, fecha: txt(l.fecha, 12), proveedor: txt(l.proveedor, 120), monto: n.toFixed(2),
+      cuenta: txt(l.cuenta, 30), descripcion: txt(l.descripcion, 200), observacion: txt(l.observacion, 250),
+      nota: txt(l.nota, 40)
+    };
+  });
+}
+
+function totales_(lineas) {
+  const cent = {};
+  lineas.forEach(function (l) { cent[l.moneda] = (cent[l.moneda] || 0) + Math.round(Number(l.monto) * 100); });
+  const out = {};
+  MONEDAS_TC.forEach(function (m) { if (cent[m] !== undefined) out[m] = (cent[m] / 100).toFixed(2); });
+  return out;
 }
 
 function buscar_(ss, id) {
   const q = filas_(ss.getSheetByName(HOJA_COT), COLS_COT).filter(function (r) { return r.id === id; })[0];
-  if (!q) throw err_('not_found', 'La cotización no existe.');
+  if (!q) throw err_('not_found', 'El documento no existe.');
   return q;
 }
 
@@ -364,24 +402,46 @@ function accListar_(u, p, c) {
 }
 
 function accRegistrar_(u, p, c) {
-  if (!u.puedeRegistrar) throw err_('forbidden', 'Su cuenta no está autorizada para registrar cotizaciones.');
+  if (!u.puedeRegistrar) throw err_('forbidden', 'Su cuenta no está autorizada para registrar documentos.');
   const txt = function (v, max) { return String(v === null || v === undefined ? '' : v).replace(/\r\n/g, '\n').trim().slice(0, max); };
+  const tipo = p.tipo === 'pago_tc' ? 'pago_tc' : 'cotizacion';
   const q = {
+    tipo: tipo,
     proveedor: txt(p.proveedor, 160),
     refProveedor: txt(p.refProveedor, 80),
     objeto: txt(p.objeto, 2000),
     moneda: txt(p.moneda, 3).toUpperCase(),
     departamento: txt(p.departamento, 120),
     fechaCotizacion: txt(p.fechaCotizacion, 10),
-    enlace: txt(p.enlace, 500)
+    enlace: txt(p.enlace, 500),
+    periodo: '', tarjeta: '', fechaCorte: '', lineas: '', totales: ''
   };
-  if (!q.proveedor) throw err_('bad', 'Indique el proveedor.');
-  if (!q.objeto) throw err_('bad', 'Describa el objeto de la cotización.');
-  const monto = Number(p.monto);
-  if (!isFinite(monto) || monto < 0) throw err_('bad', 'Indique un monto válido.');
-  q.monto = monto.toFixed(2);
-  if (MONEDAS.indexOf(q.moneda) < 0) throw err_('bad', 'Moneda no admitida.');
-  if (q.fechaCotizacion && !/^\d{4}-\d{2}-\d{2}$/.test(q.fechaCotizacion)) throw err_('bad', 'Fecha de cotización no válida.');
+  if (tipo === 'pago_tc') {
+    q.proveedor = q.proveedor || 'Bac Credomatic Honduras';
+    q.objeto = q.objeto || 'Solicitud de pago de TC';
+    q.periodo = txt(p.periodo, 40);
+    q.tarjeta = txt(p.tarjeta, 40);
+    q.fechaCorte = txt(p.fechaCorte, 10);
+    if (!q.periodo) throw err_('bad', 'Indique el período del estado de cuenta.');
+    if (/\d{7,}/.test(q.tarjeta.replace(/[\s.\-]/g, ''))) throw err_('bad', 'Para la tarjeta indique solo la marca y los últimos 4 dígitos.');
+    if (q.fechaCorte && !/^\d{4}-\d{2}-\d{2}$/.test(q.fechaCorte)) throw err_('bad', 'Fecha de corte no válida.');
+    const lineas = lineas_(p.lineas, txt);
+    const tot = totales_(lineas);
+    q.lineas = JSON.stringify(lineas);
+    q.totales = JSON.stringify(tot);
+    if (q.lineas.length > 45000) throw err_('bad', 'Demasiadas líneas o textos muy largos: divida la solicitud en dos.');
+    q.moneda = tot.HNL !== undefined ? 'HNL' : 'USD';
+    q.monto = tot[q.moneda];
+    q.fechaCotizacion = '';
+  } else {
+    if (!q.proveedor) throw err_('bad', 'Indique el proveedor.');
+    if (!q.objeto) throw err_('bad', 'Describa el objeto de la cotización.');
+    const monto = Number(p.monto);
+    if (!isFinite(monto) || monto < 0) throw err_('bad', 'Indique un monto válido.');
+    q.monto = monto.toFixed(2);
+    if (MONEDAS.indexOf(q.moneda) < 0) throw err_('bad', 'Moneda no admitida.');
+    if (q.fechaCotizacion && !/^\d{4}-\d{2}-\d{2}$/.test(q.fechaCotizacion)) throw err_('bad', 'Fecha de cotización no válida.');
+  }
   if (q.enlace && !/^https:\/\/\S+$/i.test(q.enlace)) throw err_('bad', 'El enlace debe empezar por https://');
 
   // Archivo adjunto (opcional), guardado en la carpeta Drive de la cuenta propietaria
@@ -406,7 +466,7 @@ function accRegistrar_(u, p, c) {
     const sh = ss.getSheetByName(HOJA_COT);
     const ahora = new Date();
     const anio = Utilities.formatDate(ahora, ZONA, 'yyyy');
-    const prefijo = 'COT-' + anio + '-';
+    const prefijo = TIPOS_DOC[tipo].prefijo + '-' + anio + '-';
     let max = 0;
     filas_(sh, COLS_COT).forEach(function (r) {
       if (r.folio.indexOf(prefijo) === 0) max = Math.max(max, parseInt(r.folio.slice(prefijo.length), 10) || 0);
@@ -421,7 +481,7 @@ function accRegistrar_(u, p, c) {
     q.creadoEn = ahora.toISOString();
     q.huella = huella_(q);
     agregar_(sh, COLS_COT, q);
-    bitacora_(ss, u.email, 'registrar', q.folio, q.proveedor + ' ' + q.moneda + ' ' + q.monto);
+    bitacora_(ss, u.email, 'registrar', q.folio, q.proveedor + ' ' + montoQ_(q));
   } finally {
     lock.releaseLock();
   }
@@ -532,23 +592,23 @@ function resumenSemanal() {
       const q = x.q;
       return '<tr>' +
         td_(esc_(q.folio) + (q.creadoEn > desde ? '<br><b style="color:#1d5c6e">Nueva</b>' : '')) +
-        td_(esc_(q.proveedor)) + td_(esc_(q.objeto)) +
-        td_(esc_(monto_(q.monto, q.moneda)), 'right') +
+        td_(esc_(q.proveedor)) + td_(esc_(etiquetaQ_(q))) +
+        td_(esc_(montoQ_(q)), 'right') +
         td_(esc_(fecha_(q.creadoEn)) + '<br>' + esc_(q.creadoPorNombre || q.creadoPor)) +
         td_(estadoFirmas_(x.ev, c)) + '</tr>';
     }).join('');
-    const html = cabecera_('Cotizaciones por firmar') +
-      '<p>Hay <b>' + pendientes.length + '</b> cotización(es) pendiente(s) de firma' +
+    const html = cabecera_('Cotizaciones y pagos por firmar') +
+      '<p>Hay <b>' + pendientes.length + '</b> documento(s) pendiente(s) de firma' +
       (nuevas ? ', de las cuales ' + nuevas + ' registrada(s) desde el último resumen' : '') + '.' +
       ' Cada una requiere ' + REQUERIDAS + ' firmas entre protesorera, tesorera y presidencia.</p>' +
       tabla_(['Folio', 'Proveedor', 'Objeto', 'Monto', 'Registrada', 'Firmas'], filasHtml) +
       boton_(c) + pie_();
     const texto = 'Cotizaciones pendientes de firma: ' + pendientes.length + '\n\n' +
       pendientes.map(function (x) {
-        return x.q.folio + ' | ' + x.q.proveedor + ' | ' + monto_(x.q.monto, x.q.moneda) + ' | ' + estadoTexto_(x.ev, c);
+        return x.q.folio + ' | ' + x.q.proveedor + ' | ' + montoQ_(x.q) + ' | ' + estadoTexto_(x.ev, c);
       }).join('\n') + '\n\nFirmar en: ' + c.urlPagina;
     enviar_(c, c.validadores, c.registradores,
-      'Cotizaciones por firmar: ' + pendientes.length + ' (' + Utilities.formatDate(ahora, ZONA, 'dd/MM/yyyy') + ')',
+      'Documentos por firmar: ' + pendientes.length + ' (' + Utilities.formatDate(ahora, ZONA, 'dd/MM/yyyy') + ')',
       html, texto);
     bitacora_(ss, 'sistema', 'resumen-semanal', '', pendientes.length + ' pendientes');
   } else {
@@ -596,8 +656,8 @@ function resumenDiario() {
       }).join('');
       return '<div style="border:1px solid #d3dcdf;border-left:4px solid ' + color + ';padding:10px 14px;margin:10px 0">' +
         '<div style="font-family:monospace;color:#5a6b72">' + esc_(q.folio) + '</div>' +
-        '<div><b>' + esc_(q.proveedor) + '</b>, ' + esc_(monto_(q.monto, q.moneda)) + '</div>' +
-        '<div style="color:#5a6b72">' + esc_(q.objeto) + '</div>' +
+        '<div><b>' + esc_(q.proveedor) + '</b>, ' + esc_(montoQ_(q)) + '</div>' +
+        '<div style="color:#5a6b72">' + esc_(etiquetaQ_(q)) + '</div>' +
         '<ul style="margin:8px 0;padding-left:18px">' + firmasHtml + '</ul>' +
         '<div>Estado: <b style="color:' + color + '">' + esc_(estadoTexto_(g.ev, c)) + '</b></div></div>';
     }).join('');
@@ -608,7 +668,7 @@ function resumenDiario() {
       'Validadas: <b>' + nVal + '</b>. Rechazadas: <b>' + nRech + '</b>.</p>' +
       bloques + boton_(c) + pie_();
     const texto = 'Firmas del ' + fechaHoy + '\n\n' + grupos.map(function (g) {
-      return g.q.folio + ' | ' + g.q.proveedor + ' | ' + monto_(g.q.monto, g.q.moneda) + ' | ' + estadoTexto_(g.ev, c) + '\n' +
+      return g.q.folio + ' | ' + g.q.proveedor + ' | ' + montoQ_(g.q) + ' | ' + estadoTexto_(g.ev, c) + '\n' +
         g.hoy.map(function (f) { return '  - ' + (f.rol || f.email) + ': ' + f.decision + (f.comentario ? ' (' + f.comentario + ')' : ''); }).join('\n');
     }).join('\n\n') + '\n\nRegistro: ' + c.urlPagina;
     enviar_(c, c.validadores.concat(c.registradores), [],
@@ -649,6 +709,19 @@ function monto_(m, cur) {
   if (!isFinite(n)) return cur + ' ' + m;
   return cur + ' ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
+/** Monto legible de un documento: total único, o lempiras y dólares para un pago de tarjeta. */
+function montoQ_(q) {
+  if (q.tipo === 'pago_tc') {
+    const t = typeof q.totales === 'string' ? jsonSeguro_(q.totales, {}) : (q.totales || {});
+    const partes = MONEDAS_TC.filter(function (m) { return t[m] !== undefined; }).map(function (m) { return monto_(t[m], m); });
+    return partes.join(' + ') || monto_(q.monto, q.moneda);
+  }
+  return monto_(q.monto, q.moneda);
+}
+function etiquetaQ_(q) {
+  return q.tipo === 'pago_tc' ? 'Pago de tarjeta ' + (q.tarjeta || '') + ', ' + q.periodo : q.objeto;
+}
+
 function fecha_(iso) { return iso ? Utilities.formatDate(new Date(iso), ZONA, 'dd/MM/yyyy') : ''; }
 function td_(html, align) {
   return '<td style="border:1px solid #d3dcdf;padding:6px 8px;vertical-align:top' + (align ? ';text-align:' + align : '') + '">' + html + '</td>';
