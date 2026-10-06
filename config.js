@@ -1,9 +1,9 @@
-// Configuración de la página. Rellene los dos valores después de instalar el servidor (ver README.md).
+// Configuración de la página (ver README.md).
 window.CONFIG = {
   // URL del despliegue "Aplicación web" del Apps Script (termina en /exec)
-  SCRIPT_URL: "PEGAR_AQUI_LA_URL_DEL_APPS_SCRIPT",
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyB-h5MJDbosD_jfLbEZZqU5fjmbjJkKp1J0_4eeJisMtRqMqzF8YCP9WxwncghT8PsXA/exec",
   // ID de cliente OAuth de tipo "Aplicación web" (termina en .apps.googleusercontent.com)
-  CLIENT_ID: "PEGAR_AQUI_EL_ID_DE_CLIENTE",
+  CLIENT_ID: "940265027344-4p4to7hrj39b5qcrs2ju5324eq2fg7sf.apps.googleusercontent.com",
   // Dominio de las cuentas autorizadas
   DOMINIO: "liceofranco.org"
 };
