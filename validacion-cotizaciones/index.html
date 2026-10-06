@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Validación de cotizaciones LFH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Registro a la izquierda, expediente con sus dos casillas de firma a la derecha; una columna en móvil */
+:root{
+  --bg:#f2f5f6; --surface:#ffffff; --sunk:#e9eef0; --ink:#16252c; --muted:#5a6b72; --line:#d3dcdf;
+  --accent:#1d5c6e; --accent-ink:#ffffff; --accent-soft:#e1edf0;
+  --ok:#1d7548; --ok-bg:#e2f2e9; --warn:#8f6200; --warn-bg:#faf0d6; --bad:#ae332c; --bad-bg:#f8e3e1;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:8px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e161a; --surface:#152026; --sunk:#1b2830; --ink:#e2ebee; --muted:#93a4ab; --line:#2a3b43;
+  --accent:#72b8cb; --accent-ink:#0a1a1f; --accent-soft:#1c3640;
+  --ok:#62c793; --ok-bg:#132c1f; --warn:#e2b24c; --warn-bg:#30270f; --bad:#ef8077; --bad-bg:#371917;
+  color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);padding-inline:16px;padding-block:calc(20px + env(safe-area-inset-top,0px)) calc(48px + env(safe-area-inset-bottom,0px))}
+img{max-width:100%}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.55rem;font-weight:700}
+h2{font-size:1.25rem;font-weight:600}
+h3{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:.82rem;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:14px}
+.brand{display:grid;gap:2px;min-width:0}
+.brand .eyebrow{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.who{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 4px;min-width:0;max-width:100%}
+.who img,.av{width:30px;height:30px;border-radius:50%;flex:none}
+.av{display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:.85rem}
+.who .t{display:grid;line-height:1.2;min-width:0}
+.who .t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who .t span:last-child{font-size:.78rem;color:var(--muted)}
+
+.notice{background:var(--warn-bg);color:var(--warn);border-radius:var(--r);padding:10px 14px;font-size:.9rem}
+.notice[data-kind="bad"]{background:var(--bad-bg);color:var(--bad)}
+.notice[data-kind="ok"]{background:var(--ok-bg);color:var(--ok)}
+.notice[data-kind="info"]{background:var(--accent-soft);color:var(--accent)}
+
+.gate{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:32px 24px;display:grid;gap:14px;justify-items:start;max-width:560px}
+.gate p{margin:0;max-width:60ch}
+
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:flex;flex-wrap:wrap;gap:4px;background:var(--sunk);padding:4px;border-radius:999px}
+.seg button{border:0;background:transparent;padding:5px 12px;border-radius:999px;cursor:pointer;font-size:.86rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0/.12)}
+.seg .n{font-variant-numeric:tabular-nums;opacity:.7;margin-left:4px}
+.search{flex:1 1 200px;min-width:0;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:var(--r);cursor:pointer;font-weight:500;text-decoration:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.btn.bad{background:transparent;border-color:var(--bad);color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.small{padding:5px 10px;font-size:.85rem}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+
+.main{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+.list{display:grid;gap:8px;min-width:0}
+.item{display:grid;gap:4px;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;cursor:pointer}
+.item:hover{border-color:var(--muted)}
+.item[aria-current="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.item .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;min-width:0}
+.item .prov{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.item .obj{color:var(--muted);font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.amount{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.02em}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.p-pend{background:var(--warn-bg);color:var(--warn)}
+.p-half{background:var(--accent-soft);color:var(--accent)}
+.p-ok{background:var(--ok-bg);color:var(--ok)}
+.p-bad{background:var(--bad-bg);color:var(--bad)}
+.p-void{background:var(--sunk);color:var(--muted)}
+.empty{border:1.5px dashed var(--line);border-radius:var(--r);padding:28px 20px;text-align:center;display:grid;gap:10px;justify-items:center;color:var(--muted)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px;display:grid;gap:20px;min-width:0}
+.dhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
+.dhead .l{display:grid;gap:4px;min-width:0}
+.dhead .l .pill{justify-self:start}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 20px;margin:0}
+.facts div{display:grid;gap:2px;min-width:0}
+.facts dt{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.facts dd{margin:0;overflow-wrap:anywhere}
+.desc{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;max-width:68ch}
+.stamp{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:.9rem;padding:6px 12px;border:2.5px double currentColor;border-radius:4px;transform:rotate(-4deg);white-space:nowrap}
+.stamp.ok{color:var(--ok)} .stamp.bad{color:var(--bad)}
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.slot{border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:8px;align-content:start;min-width:0;background:var(--bg)}
+.slot.empty-slot{border-style:dashed;background:transparent}
+.slot .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.slot .person{display:flex;gap:10px;align-items:center;min-width:0}
+.slot .person .t{display:grid;line-height:1.25;min-width:0}
+.slot .person .t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot .person .t span:last-child{font-size:.82rem;color:var(--muted)}
+.slot.ok{border-color:var(--ok)} .slot.bad{border-color:var(--bad)} .slot.broken{border-color:var(--warn)}
+.check{display:flex;gap:6px;align-items:flex-start;font-size:.82rem;color:var(--ok)}
+.check.warn{color:var(--warn)} .check.bad{color:var(--bad)}
+.check svg{flex:none;margin-top:2px}
+.comment{font-size:.88rem;background:var(--surface);border-left:3px solid var(--line);padding:6px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.sign{border:1px solid var(--accent);border-radius:var(--r);padding:16px;display:grid;gap:12px;background:var(--accent-soft)}
+.choice{display:flex;flex-wrap:wrap;gap:10px}
+.choice label{display:flex;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--line);padding:6px 12px;border-radius:var(--r);cursor:pointer}
+.ack{display:flex;gap:8px;align-items:flex-start;font-size:.9rem}
+.ack input{margin-top:4px}
+.integrity{display:grid;gap:6px;border-top:1px solid var(--line);padding-top:14px;font-size:.85rem}
+.hash{overflow-wrap:anywhere}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+form.reg{display:grid;gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.field{display:grid;gap:4px;min-width:0}
+.field label{font-size:.82rem;font-weight:600}
+.field .hint{font-size:.78rem;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.field textarea{min-height:84px;resize:vertical}
+.err{color:var(--bad);font-size:.85rem}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-size:.9rem;max-width:calc(100% - 32px);z-index:5}
+footer.how{font-size:.85rem;color:var(--muted);max-width:80ch;display:grid;gap:6px;border-top:1px solid var(--line);padding-top:14px}
+footer.how p{margin:0}
+#print{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* Constancia imprimible */
+@media print{
+  body{background:#fff;color:#000;padding:0;font-size:12pt}
+  .wrap,.toast{display:none!important}
+  #print{display:block!important}
+  #print h1{font-size:18pt;margin:0 0 4pt}
+  #print table{border-collapse:collapse;width:100%;margin:8pt 0 14pt}
+  #print td,#print th{border:1px solid #999;padding:4pt 6pt;text-align:left;vertical-align:top}
+  #print th{background:#eee}
+  #print .mono{font-family:"IBM Plex Mono",Consolas,monospace;font-size:8.5pt;word-break:break-all}
+  #print .sello{display:inline-block;border:3px double;padding:3pt 10pt;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;margin:6pt 0}
+  #print .pie{font-size:9pt;color:#444}
+}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Liceo Franco Hondureño · Administración y Finanzas</span>
+      <h1>Validación de cotizaciones</h1>
+      <span class="muted">Cada cotización requiere dos firmas entre protesorera, tesorera y presidencia.</span>
+    </div>
+    <div class="who" id="who" hidden>
+      <img id="whoImg" alt="" referrerpolicy="no-referrer">
+      <div class="t"><span id="whoName"></span><span id="whoMail"></span></div>
+      <button class="btn ghost small" id="logout" type="button">Salir</button>
+    </div>
+  </header>
+
+  <div id="banner" class="notice" hidden></div>
+
+  <section id="gate" class="gate" hidden>
+    <h2>Inicie sesión</h2>
+    <p>Use su cuenta del Liceo (@liceofranco.org). Su identidad la verifica Google y queda asociada a cada registro y a cada firma.</p>
+    <div id="gbtn"></div>
+    <p class="muted" id="gateMsg" style="font-size:.88rem"></p>
+  </section>
+
+  <section id="app" hidden>
+    <div style="display:grid;gap:16px">
+      <div class="tools">
+        <div class="seg" role="group" aria-label="Filtrar por estado" id="seg"></div>
+        <input class="search" id="q" type="search" placeholder="Buscar proveedor, objeto o folio" aria-label="Buscar">
+        <button class="btn" id="reload" type="button">Actualizar</button>
+        <button class="btn primary" id="newBtn" type="button" hidden>Registrar cotización</button>
+      </div>
+      <div class="main">
+        <div class="list" id="list" aria-label="Cotizaciones registradas"></div>
+        <section id="detail" aria-live="polite"></section>
+      </div>
+    </div>
+  </section>
+
+  <footer class="how">
+    <h3>Cómo funciona la firma</h3>
+    <p>Cada persona entra con su cuenta Google del Liceo: nadie escribe su nombre a mano y nadie puede firmar en lugar de otra persona. Solo firman la protesorera, la tesorera y la presidencia; una cotización queda validada con dos aprobaciones.</p>
+    <p>Las cotizaciones registradas se envían a las validadoras en un resumen cada miércoles. Cada día a las 18:00 sale un correo con las firmas del día, si las hubo.</p>
+    <p>Al registrar una cotización se calcula su huella SHA-256 (datos y archivo). Cada firma guarda esa huella y un sello propio. Si alguien modifica la cotización o una firma directamente en la hoja de registro, la página lo detecta y la firma deja de contar.</p>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div id="print"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const CFG = window.CONFIG || {};
+const CONFIGURADO = CFG.SCRIPT_URL && CFG.CLIENT_ID && !/PEGAR_AQUI/.test(CFG.SCRIPT_URL + CFG.CLIENT_ID);
+const S = {
+  token:null, perfil:null, yo:null, quotes:[], roles:[], requeridas:2, loaded:false,
+  selected:null, mode:"view", filter:"todas", search:"",
+  signDraft:null, voidDraft:null, poll:null
+};
+
+/* ---------- utilidades ---------- */
+function h(tag, attrs, ...kids){
+  const el = document.createElement(tag);
+  if (attrs) for (const [k,v] of Object.entries(attrs)){
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "text") el.textContent = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()){ if (c == null || c === false) continue; el.append(c.nodeType ? c : document.createTextNode(String(c))); }
+  return el;
+}
+function icon(kind){
+  const d = kind === "ok" ? "M3 8.5l3.2 3L13 4.5" : kind === "bad" ? "M4 4l8 8M12 4l-8 8" : "M8 3.5v5.5M8 11.8v.2";
+  const ns = "http://www.w3.org/2000/svg";
+  const s = document.createElementNS(ns,"svg");
+  s.setAttribute("width","14"); s.setAttribute("height","14"); s.setAttribute("viewBox","0 0 16 16"); s.setAttribute("aria-hidden","true");
+  const p = document.createElementNS(ns,"path");
+  p.setAttribute("d", d); p.setAttribute("fill","none"); p.setAttribute("stroke","currentColor"); p.setAttribute("stroke-width","2"); p.setAttribute("stroke-linecap","round"); p.setAttribute("stroke-linejoin","round");
+  s.append(p); return s;
+}
+function avatar(nombre, email){ const t = (nombre || email || "?").trim(); return h("span",{class:"av","aria-hidden":"true",text:t.charAt(0).toUpperCase()}); }
+const fmtMoney = (n, cur) => { const v = Number(n); try { return new Intl.NumberFormat("es-HN",{style:"currency",currency:cur||"HNL"}).format(v); } catch { return (cur||"") + " " + n; } };
+const fmtDate = iso => { if(!iso) return ""; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString("es-HN",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); };
+const fmtDay = s => { if(!s) return "No indicada"; const [y,m,d] = s.split("-"); return d && m && y ? `${d}/${m}/${y}` : s; };
+let toastT;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3500); }
+function banner(msg, kind){ const b = $("banner"); if(!msg){ b.hidden = true; return; } b.textContent = msg; b.dataset.kind = kind || ""; b.hidden = false; }
+function store(k, v){ try { if (v == null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch {} }
+function read(k){ try { return sessionStorage.getItem(k); } catch { return null; } }
+function decodeJwt(t){
+  const p = t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+  const bin = atob(p + "===".slice((p.length + 3) % 4));
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+}
+function fileToBase64(file){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(",")[1] || "");
+    r.onerror = () => rej(new Error("No se pudo leer el archivo."));
+    r.readAsDataURL(file);
+  });
+}
+
+/* ---------- sesión ---------- */
+function tokenVigente(){ return S.token && S.perfil && (S.perfil.exp * 1000 - Date.now()) > 60000; }
+function mostrarGate(msg){
+  $("app").hidden = true; $("who").hidden = true; $("gate").hidden = false;
+  $("gateMsg").textContent = msg || "";
+  clearInterval(S.poll);
+}
+function cerrarSesion(msg, explicito){
+  S.token = null; S.perfil = null; S.yo = null; store("lfh_tk", null);
+  mostrarGate(msg);
+  try {
+    if (explicito) google.accounts.id.disableAutoSelect();
+    else google.accounts.id.prompt();
+  } catch {}
+}
+function onCredential(resp){
+  try {
+    S.token = resp.credential; S.perfil = decodeJwt(S.token);
+    store("lfh_tk", S.token);
+    entrar();
+  } catch { mostrarGate("No se pudo leer la sesión. Intente de nuevo."); }
+}
+async function api(action, payload){
+  if (!tokenVigente()){ cerrarSesion("Su sesión venció. Vuelva a iniciar sesión."); throw {code:"auth", message:"Sesión vencida."}; }
+  let r;
+  try {
+    r = await fetch(CFG.SCRIPT_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({token:S.token, action, payload})});
+  } catch { throw {code:"red", message:"No se pudo contactar el servidor. Revise su conexión."}; }
+  let j;
+  try { j = await r.json(); } catch { throw {code:"red", message:"Respuesta inesperada del servidor."}; }
+  if (!j.ok){ if (j.code === "auth") cerrarSesion(j.message); throw j; }
+  return j.data;
+}
+async function entrar(){
+  $("gate").hidden = true;
+  $("who").hidden = false;
+  if (S.perfil.picture){ $("whoImg").src = S.perfil.picture; $("whoImg").hidden = false; } else $("whoImg").hidden = true;
+  $("whoName").textContent = S.perfil.name || S.perfil.email;
+  $("whoMail").textContent = S.perfil.email;
+  banner("Verificando su acceso", "info");
+  try {
+    S.yo = await api("whoami");
+  } catch(e){ if (e.code !== "auth") banner(msgError(e), "bad"); return; }
+  if (!S.yo.acceso){
+    banner("La cuenta " + S.yo.email + " no figura en las listas de acceso. Pida a la administración que la agregue.", "bad");
+    $("app").hidden = true; return;
+  }
+  banner(null);
+  $("app").hidden = false;
+  $("newBtn").hidden = !S.yo.puedeRegistrar;
+  await cargar();
+  clearInterval(S.poll);
+  S.poll = setInterval(() => { if (document.visibilityState === "visible" && S.mode === "view" && !S.signDraft && !S.voidDraft) cargar(true); }, 60000);
+}
+async function cargar(silencioso){
+  try {
+    const d = await api("listar");
+    S.quotes = d.cotizaciones || [];
+    S.roles = d.roles || [];
+    S.requeridas = d.requeridas || 2;
+    S.loaded = true;
+    if (S.selected && !S.quotes.some(q => q.id === S.selected)) S.selected = null;
+    if (!S.selected && S.mode === "view" && S.quotes.length && matchMedia("(min-width:861px)").matches) S.selected = S.quotes[0].id;
+    render();
+  } catch(e){ if (!silencioso && e.code !== "auth") banner("No se pudo leer el registro: " + msgError(e), "bad"); }
+}
+
+/* ---------- estados ---------- */
+const ESTADOS = {
+  pendiente:{t:"Pendiente 0/2", c:"p-pend"},
+  parcial:{t:"1 de 2 firmas", c:"p-half"},
+  validada:{t:"Validada", c:"p-ok"},
+  rechazada:{t:"Rechazada", c:"p-bad"},
+  alterada:{t:"Modificada fuera del sistema", c:"p-bad"},
+  anulada:{t:"Anulada", c:"p-void"}
+};
+const FILTROS = [["todas","Todas"],["mias","Por firmar por mí"],["porfirmar","En curso"],["validada","Validadas"],["rechazada","Rechazadas"],["anulada","Anuladas"]];
+function porFirmarPorMi(q){
+  return S.yo && S.yo.puedeValidar && (q.estado === "pendiente" || q.estado === "parcial") &&
+    q.creadoPor !== S.yo.email && !q.firmas.some(f => f.email === S.yo.email);
+}
+function pasa(q, filtro){
+  const e = q.estado;
+  if (filtro === "todas") return true;
+  if (filtro === "mias") return porFirmarPorMi(q);
+  if (filtro === "porfirmar") return e === "pendiente" || e === "parcial";
+  if (filtro === "rechazada") return e === "rechazada" || e === "alterada";
+  return e === filtro;
+}
+
+/* ---------- render ---------- */
+function render(){ renderSeg(); renderList(); renderDetail(); }
+function renderSeg(){
+  const seg = $("seg"); seg.replaceChildren();
+  for (const [k,label] of FILTROS){
+    if (k === "mias" && !(S.yo && S.yo.puedeValidar)) continue;
+    const n = S.quotes.filter(q => pasa(q,k)).length;
+    seg.append(h("button",{type:"button","aria-pressed":String(S.filter===k), onclick:()=>{S.filter=k; render();}}, label, h("span",{class:"n",text:String(n)})));
+  }
+}
+function renderList(){
+  const list = $("list"); list.replaceChildren();
+  if (!S.loaded){ list.append(h("div",{class:"empty"}, h("span",{text:"Cargando el registro de cotizaciones"}))); return; }
+  const s = S.search.trim().toLowerCase();
+  const rows = S.quotes.filter(q => pasa(q, S.filter) && (!s || [q.folio,q.proveedor,q.objeto,q.refProveedor,q.departamento].join(" ").toLowerCase().includes(s)));
+  if (!S.quotes.length){
+    list.append(h("div",{class:"empty"},
+      h("strong",{text:"Aún no hay cotizaciones registradas"}),
+      h("span",{text:"Registre la primera con su proveedor, objeto y monto. Después dos validadores la firman desde esta misma página."}),
+      S.yo && S.yo.puedeRegistrar && h("button",{class:"btn primary",type:"button",onclick:openNew},"Registrar cotización")));
+    return;
+  }
+  if (!rows.length){ list.append(h("div",{class:"empty"}, h("span",{text:"Ninguna cotización coincide con el filtro."}))); return; }
+  for (const q of rows){
+    const e = ESTADOS[q.estado] || ESTADOS.pendiente;
+    list.append(h("button",{class:"item",type:"button","aria-current":String(S.selected===q.id && S.mode==="view"), onclick:()=>select(q.id)},
+      h("div",{class:"row"}, h("span",{class:"prov",text:q.proveedor}), h("span",{class:"amount",text:fmtMoney(q.monto,q.moneda)})),
+      h("div",{class:"obj",text:q.objeto}),
+      h("div",{class:"row"}, h("span",{class:"mono muted",text:q.folio}), h("span",{class:"pill "+e.c,text:e.t}))));
+  }
+}
+function scrollDetalle(){ if (matchMedia("(max-width:860px)").matches) $("detail").scrollIntoView({behavior:"smooth",block:"start"}); }
+function select(id){ S.selected = id; S.mode = "view"; S.signDraft = null; S.voidDraft = null; render(); scrollDetalle(); }
+function openNew(){ S.mode = "new"; S.selected = null; render(); const f = $("f_prov"); if (f) f.focus(); scrollDetalle(); }
+
+function renderDetail(){
+  const box = $("detail"); box.replaceChildren();
+  if (S.mode === "new"){ box.append(formNew()); return; }
+  const q = S.quotes.find(x => x.id === S.selected);
+  if (!q){
+    box.append(h("div",{class:"card"}, h("h3",{text:"Expediente"}),
+      h("p",{class:"muted",style:"margin:0",text: S.quotes.length ? "Seleccione una cotización de la lista para ver su detalle y sus firmas." : "Aquí aparecerá el detalle de cada cotización con sus dos casillas de firma."})));
+    return;
+  }
+  const est = ESTADOS[q.estado] || ESTADOS.pendiente;
+  const card = h("article",{class:"card"});
+  card.append(h("div",{class:"dhead"},
+    h("div",{class:"l"}, h("span",{class:"mono muted",text:q.folio}), h("h2",{text:q.proveedor}), h("span",{class:"pill "+est.c,text:est.t})),
+    q.estado==="validada" ? h("span",{class:"stamp ok",text:"Validada"}) : q.estado==="rechazada" ? h("span",{class:"stamp bad",text:"Rechazada"}) : null));
+
+  if (q.estado === "alterada") card.append(h("div",{class:"notice","data-kind":"bad",text:"Los datos de esta cotización ya no corresponden a la huella calculada al registrarla: alguien los modificó directamente en la hoja. Las firmas quedan sin efecto. Registre de nuevo la cotización si el cambio era legítimo."}));
+  if (q.anulada) card.append(h("div",{class:"notice",text:`Anulada el ${fmtDate(q.anulada.en)} por ${q.anulada.por}. Motivo: ${q.anulada.motivo || "no indicado"}`}));
+
+  card.append(h("dl",{class:"facts"},
+    fact("Monto", h("span",{class:"amount",text:fmtMoney(q.monto,q.moneda)})),
+    fact("Referencia del proveedor", q.refProveedor || "No indicada"),
+    fact("Fecha de la cotización", fmtDay(q.fechaCotizacion)),
+    fact("Área solicitante", q.departamento || "No indicada"),
+    fact("Registrada por", `${q.creadoPorNombre || q.creadoPor}, ${fmtDate(q.creadoEn)}`)));
+  card.append(h("div",{style:"display:grid;gap:4px"}, h("h3",{text:"Objeto"}), h("p",{class:"desc",text:q.objeto})));
+
+  const docs = h("div",{class:"actions"});
+  const verif = h("span");
+  if (q.tieneArchivo) docs.append(h("button",{class:"btn small",type:"button",onclick:ev=>abrirArchivo(q, ev.currentTarget, verif)}, "Abrir " + (q.archivoNombre || "documento")), verif);
+  if (q.enlace) docs.append(h("a",{class:"btn small",href:q.enlace,target:"_blank",rel:"noopener noreferrer"},"Abrir enlace del documento"));
+  if (docs.childNodes.length) card.append(h("div",{style:"display:grid;gap:6px"}, h("h3",{text:"Documento"}), docs));
+
+  const validas = q.firmas.filter(f => f.valida);
+  const invalidas = q.firmas.filter(f => !f.valida);
+  const cerrada = ["validada","rechazada","anulada","alterada"].includes(q.estado);
+  const slots = h("div",{class:"slots"});
+  const usadas = new Set();
+  for (const r of S.roles){
+    const f = r.email && validas.find(x => x.email === r.email);
+    if (f){ usadas.add(f); slots.append(slotFirmado(r.rol, f)); continue; }
+    slots.append(h("div",{class:"slot empty-slot"},
+      h("div",{class:"lbl"}, h("span",{text:r.rol}), h("span",{text: cerrada ? "No requerida" : "Pendiente"})),
+      h("span",{class:"muted",style:"font-size:.88rem",text: !r.email ? "Cargo sin cuenta asignada." : cerrada ? "La cotización ya está cerrada." : "Puede firmar: " + r.email})));
+  }
+  for (const f of validas) if (!usadas.has(f)) slots.append(slotFirmado(f.rol || "Firma", f));
+  for (const f of invalidas) slots.append(slotFirmado("Firma sin efecto", f));
+  card.append(h("div",{style:"display:grid;gap:10px"},
+    h("h3",{text:`Firmas (${q.aprobaciones || 0} de ${S.requeridas} aprobaciones necesarias)`}), slots));
+
+  const yo = S.yo.email;
+  const abierta = q.estado === "pendiente" || q.estado === "parcial";
+  if (abierta){
+    if (q.creadoPor === yo) card.append(h("div",{class:"notice","data-kind":"info",text:"Usted registró esta cotización, por lo que no puede firmarla. La validan otras dos personas."}));
+    else if (q.firmas.some(f => f.email === yo)) card.append(h("div",{class:"notice","data-kind":"ok",text:"Usted ya firmó esta cotización. Falta otra firma para completar la validación."}));
+    else if (S.yo.puedeValidar) card.append(panelFirma(q));
+  }
+
+  card.append(h("div",{class:"integrity"},
+    h("h3",{text:"Integridad"}),
+    h("div",{class:"check"+(q.integra?"":" bad")}, icon(q.integra?"ok":"bad"), h("span",{text: q.integra ? "Los datos coinciden con la huella registrada." : "Los datos no coinciden con la huella registrada."})),
+    h("div",{class:"mono hash muted",text:"Huella SHA-256 " + q.huella}),
+    q.archivoSha256 ? h("div",{class:"mono hash muted",text:`Archivo ${q.archivoNombre}: ${q.archivoSha256}`}) : null));
+
+  const acts = h("div",{class:"actions"});
+  if (q.estado === "validada" || q.estado === "rechazada") acts.append(h("button",{class:"btn",type:"button",onclick:()=>imprimirConstancia(q)},"Imprimir constancia"));
+  const puedoAnular = !q.anulada && q.estado !== "validada" && (q.creadoPor === yo || S.yo.esAdmin);
+  if (puedoAnular && !S.voidDraft) acts.append(h("button",{class:"btn bad small",type:"button",onclick:()=>{S.voidDraft={}; render();}},"Anular cotización"));
+  if (acts.childNodes.length) card.append(acts);
+  if (puedoAnular && S.voidDraft) card.append(panelAnular(q));
+  box.append(card);
+}
+function fact(label, val){ return h("div",null, h("dt",{text:label}), h("dd",null, val)); }
+function slotFirmado(titulo, f){
+  const ok = f.decision === "aprobada";
+  const cls = !f.valida ? "broken" : ok ? "ok" : "bad";
+  return h("div",{class:"slot "+cls},
+    h("div",{class:"lbl"}, h("span",{text:titulo}), h("span",{style:"color:var(--"+(f.valida?(ok?"ok":"bad"):"warn")+")",text: ok ? "Aprobada" : "Rechazada"})),
+    h("div",{class:"person"}, avatar(f.nombre, f.email), h("div",{class:"t"}, h("span",{text:f.nombre || f.email}), h("span",{text:f.email}))),
+    h("span",{class:"mono muted",text:fmtDate(f.en)}),
+    f.valida
+      ? h("div",{class:"check"}, icon("ok"), h("span",{text:"Cuenta verificada por Google, huella y sello correctos."}))
+      : h("div",{class:"check warn"}, icon("warn"), h("span",{text:f.motivo + " No cuenta."})),
+    f.comentario ? h("div",{class:"comment",text:f.comentario}) : null);
+}
+
+/* ---------- firmar ---------- */
+function panelFirma(q){
+  const d = S.signDraft && S.signDraft.qid === q.id ? S.signDraft : (S.signDraft = {qid:q.id, decision:"aprobada", comentario:"", ack:false});
+  const err = h("div",{class:"err",role:"alert"});
+  const btn = h("button",{class:"btn "+(d.decision==="aprobada"?"ok":"bad"),type:"button",id:"signBtn",onclick:async()=>{
+    err.textContent = "";
+    if (!d.ack){ err.textContent = "Confirme que revisó la cotización y el documento."; return; }
+    if (d.decision === "rechazada" && !d.comentario.trim()){ err.textContent = "Indique el motivo del rechazo."; return; }
+    btn.disabled = true; btn.textContent = "Registrando firma";
+    try {
+      const r = await api("firmar", {id:q.id, decision:d.decision, comentario:d.comentario, huella:q.huella});
+      S.signDraft = null;
+      toast(r.estado === "validada" ? "Firma registrada. La cotización quedó validada." : d.decision === "aprobada" ? "Firma registrada" : "Rechazo registrado");
+      await cargar();
+    } catch(e){ err.textContent = msgError(e); btn.disabled = false; btn.textContent = d.decision==="aprobada" ? "Firmar y aprobar" : "Firmar el rechazo"; }
+  }}, d.decision==="aprobada" ? "Firmar y aprobar" : "Firmar el rechazo");
+  const radio = (v, label) => h("label",null, h("input",{type:"radio",name:"dec",id:"dec_"+v,value:v,checked:d.decision===v,onchange:()=>{d.decision=v; render();}}), label);
+  return h("div",{class:"sign"},
+    h("h3",{text:"Su firma"}),
+    h("div",null, "Firmará como ", h("strong",{text:S.yo.nombre}), S.yo.rol ? ", " + S.yo.rol : "", " (", S.yo.email, "). La identidad la verifica Google."),
+    h("div",{class:"choice"}, radio("aprobada","Aprobar"), radio("rechazada","Rechazar")),
+    h("div",{class:"field"}, h("label",{for:"f_com",text: d.decision==="rechazada" ? "Motivo del rechazo" : "Comentario (opcional)"}),
+      h("textarea",{id:"f_com",maxlength:"1000",oninput:e=>{d.comentario=e.target.value;}}, d.comentario)),
+    h("label",{class:"ack"}, h("input",{type:"checkbox",id:"f_ack",checked:d.ack,onchange:e=>{d.ack=e.target.checked;}}),
+      h("span",{text:"Declaro haber revisado esta cotización y su documento. Entiendo que mi firma queda registrada con fecha, hora y huella del documento."})),
+    h("div",{class:"actions"}, btn), err);
+}
+
+/* ---------- anular ---------- */
+function panelAnular(q){
+  const err = h("div",{class:"err",role:"alert"});
+  const ta = h("textarea",{id:"f_void",maxlength:"500",placeholder:"Ejemplo: el proveedor retiró la oferta"});
+  return h("div",{class:"sign",style:"border-color:var(--bad);background:var(--bad-bg)"},
+    h("h3",{text:"Anular cotización"}),
+    h("div",{class:"field"}, h("label",{for:"f_void",text:"Motivo de la anulación"}), ta),
+    h("div",{class:"actions"},
+      h("button",{class:"btn bad",type:"button",onclick:async ev=>{
+        const b = ev.currentTarget;
+        if (!ta.value.trim()){ err.textContent = "Indique el motivo."; return; }
+        b.disabled = true;
+        try { await api("anular",{id:q.id, motivo:ta.value.trim()}); S.voidDraft = null; toast("Cotización anulada"); await cargar(); }
+        catch(x){ err.textContent = msgError(x); b.disabled = false; }
+      }},"Confirmar anulación"),
+      h("button",{class:"btn",type:"button",onclick:()=>{S.voidDraft=null; render();}},"Cancelar")),
+    err);
+}
+
+/* ---------- registrar ---------- */
+function formNew(){
+  const err = h("div",{class:"err",role:"alert"});
+  const fld = (id, label, input, hint) => h("div",{class:"field"}, h("label",{for:id,text:label}), input, hint ? h("span",{class:"hint",text:hint}) : null);
+  const t = new Date();
+  const hoy = t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+  const form = h("form",{class:"reg card",novalidate:true});
+  form.append(
+    h("div",{class:"dhead"}, h("h2",{text:"Registrar cotización"}), h("button",{class:"btn small",type:"button",onclick:()=>{S.mode="view"; render();}},"Cancelar")),
+    h("div",{class:"grid2"},
+      fld("f_prov","Proveedor", h("input",{id:"f_prov",required:true,maxlength:"160",autocomplete:"organization"})),
+      fld("f_ref","N.º de cotización del proveedor", h("input",{id:"f_ref",maxlength:"80"}))),
+    fld("f_obj","Objeto de la cotización", h("textarea",{id:"f_obj",required:true,maxlength:"2000",placeholder:"Ejemplo: mantenimiento de aires acondicionados, edificio de secundaria"})),
+    h("div",{class:"grid2"},
+      fld("f_monto","Monto total", h("input",{id:"f_monto",type:"number",step:"0.01",min:"0",required:true,inputmode:"decimal"})),
+      fld("f_mon","Moneda", h("select",{id:"f_mon"}, h("option",{value:"HNL",text:"Lempiras (HNL)"}), h("option",{value:"USD",text:"Dólares (USD)"}), h("option",{value:"EUR",text:"Euros (EUR)"}))),
+      fld("f_fecha","Fecha de la cotización", h("input",{id:"f_fecha",type:"date",value:hoy})),
+      fld("f_dep","Área solicitante", h("input",{id:"f_dep",maxlength:"120",placeholder:"Ejemplo: Intendencia"}))),
+    fld("f_file","Documento de la cotización (PDF, PNG o JPG)", h("input",{id:"f_file",type:"file",accept:"application/pdf,image/png,image/jpeg"}), "Se guarda en el Drive de la administración y se calcula su huella. Máximo 10 MB."),
+    fld("f_link","Enlace al documento (opcional)", h("input",{id:"f_link",type:"url",placeholder:"https://drive.google.com/...",maxlength:"500"})),
+    h("div",{class:"actions"}, h("button",{class:"btn primary",type:"submit",id:"f_submit"},"Registrar")),
+    err);
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault(); err.textContent = "";
+    const v = id => ($(id) && $(id).value || "").trim();
+    const monto = parseFloat(v("f_monto"));
+    if (!v("f_prov")){ err.textContent = "Indique el proveedor."; return; }
+    if (!v("f_obj")){ err.textContent = "Describa el objeto de la cotización."; return; }
+    if (!(monto >= 0)){ err.textContent = "Indique un monto válido."; return; }
+    const link = v("f_link");
+    if (link && !/^https:\/\//i.test(link)){ err.textContent = "El enlace debe empezar por https://"; return; }
+    const btn = $("f_submit"); btn.disabled = true; btn.textContent = "Registrando";
+    try {
+      let archivo = null;
+      const file = $("f_file").files[0];
+      if (file){
+        if (file.size > 10*1024*1024) throw new Error("El archivo supera 10 MB.");
+        const tipo = /\.pdf$/i.test(file.name) ? "application/pdf" : /\.png$/i.test(file.name) ? "image/png" : /\.jpe?g$/i.test(file.name) ? "image/jpeg" : file.type;
+        archivo = {nombre:file.name, tipo, base64: await fileToBase64(file)};
+      }
+      const r = await api("registrar", {
+        proveedor:v("f_prov"), refProveedor:v("f_ref"), objeto:v("f_obj"), monto,
+        moneda:v("f_mon"), fechaCotizacion:v("f_fecha"), departamento:v("f_dep"), enlace:link, archivo
+      });
+      S.mode = "view"; S.selected = r.id; toast("Cotización " + r.folio + " registrada");
+      await cargar();
+    } catch(e){ err.textContent = msgError(e); btn.disabled = false; btn.textContent = "Registrar"; }
+  });
+  return form;
+}
+
+/* ---------- archivo ---------- */
+async function abrirArchivo(q, btn, out){
+  const w = window.open("", "_blank");
+  btn.disabled = true; out.replaceChildren(h("span",{class:"muted",text:"Descargando y verificando"}));
+  try {
+    const a = await api("archivo",{id:q.id});
+    const bin = atob(a.base64);
+    const blob = new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))], {type:a.tipo});
+    const url = URL.createObjectURL(blob);
+    if (w) w.location.href = url;
+    out.replaceChildren(a.shaActual === a.shaRegistrado
+      ? h("span",{class:"check"}, icon("ok"), h("span",{text:"Archivo idéntico al registrado."}))
+      : h("span",{class:"check bad"}, icon("bad"), h("span",{text:"El archivo en Drive no coincide con el registrado."})));
+    if (!w) out.append(h("a",{href:url,download:a.nombre,class:"btn small"},"Descargar"));
+  } catch(e){ if (w) w.close(); out.replaceChildren(h("span",{class:"err",text:msgError(e)})); }
+  btn.disabled = false;
+}
+
+/* ---------- constancia ---------- */
+function imprimirConstancia(q){
+  const P = $("print"); P.replaceChildren();
+  const fila = (k, v) => h("tr",null, h("th",{text:k}), h("td",null, v));
+  const validas = q.firmas.filter(f => f.valida);
+  P.append(
+    h("p",{text:"Liceo Franco Hondureño · Administración y Finanzas"}),
+    h("h1",{text:"Constancia de validación de cotización"}),
+    h("div",{class:"sello",text: q.estado === "validada" ? "Validada" : "Rechazada"}),
+    h("table",null,
+      fila("Folio", q.folio), fila("Proveedor", q.proveedor), fila("N.º del proveedor", q.refProveedor || "No indicado"),
+      fila("Objeto", q.objeto), fila("Monto", fmtMoney(q.monto,q.moneda)), fila("Fecha de la cotización", fmtDay(q.fechaCotizacion)),
+      fila("Área solicitante", q.departamento || "No indicada"),
+      fila("Registrada por", `${q.creadoPorNombre || ""} <${q.creadoPor}>, ${fmtDate(q.creadoEn)}`),
+      q.archivoSha256 ? fila("Archivo", h("span",null, q.archivoNombre, h("br"), h("span",{class:"mono",text:"SHA-256 " + q.archivoSha256}))) : null,
+      q.enlace ? fila("Enlace", h("span",{class:"mono",text:q.enlace})) : null),
+    h("h2",{style:"font-size:13pt",text:"Firmas"}),
+    h("table",null,
+      h("tr",null, ["#","Cargo","Firmante","Decisión","Fecha y hora","Comentario","Sello"].map(t => h("th",{text:t}))),
+      validas.map((f,i) => h("tr",null,
+        h("td",{text:String(i+1)}), h("td",{text:f.rol || ""}), h("td",null, f.nombre, h("br"), f.email),
+        h("td",{text: f.decision === "aprobada" ? "Aprobada" : "Rechazada"}), h("td",{text:fmtDate(f.en)}),
+        h("td",{text:f.comentario || ""}), h("td",{class:"mono",text:f.sello.slice(0,16)})))),
+    h("p",{class:"mono",text:"Huella SHA-256 de la cotización: " + q.huella}),
+    h("p",{class:"pie",text:"Cada firmante se identificó con su cuenta Google @liceofranco.org. El servidor registró la huella de la cotización y un sello HMAC por firma; cualquier modificación posterior de los datos, del archivo o de las firmas las invalida. Constancia generada el " + fmtDate(new Date().toISOString()) + " por " + S.yo.email + "."}));
+  window.print();
+}
+
+function msgError(e){
+  if (!e) return "Ocurrió un error. Intente de nuevo.";
+  if (e.code === "forbidden" || e.code === "closed" || e.code === "bad" || e.code === "stale" || e.code === "not_found" || e.code === "config" || e.code === "auth" || e.code === "red") return e.message;
+  return e.message || "Ocurrió un error. Intente de nuevo.";
+}
+
+/* ---------- arranque ---------- */
+$("q").addEventListener("input", e => { S.search = e.target.value; render(); });
+$("newBtn").addEventListener("click", openNew);
+$("reload").addEventListener("click", () => cargar());
+$("logout").addEventListener("click", () => cerrarSesion("Sesión cerrada.", true));
+
+if (!CONFIGURADO){
+  banner("Página no configurada: complete SCRIPT_URL y CLIENT_ID en config.js (ver README).", "bad");
+} else {
+  const guardado = read("lfh_tk");
+  if (guardado){ try { S.token = guardado; S.perfil = decodeJwt(guardado); } catch { S.token = null; S.perfil = null; } }
+  if (tokenVigente()) entrar(); else { S.token = null; S.perfil = null; mostrarGate(); }
+  window.onGoogleLibraryLoad = () => {
+    google.accounts.id.initialize({client_id:CFG.CLIENT_ID, callback:onCredential, hd:CFG.DOMINIO, auto_select:true, use_fedcm_for_prompt:true, cancel_on_tap_outside:false});
+    google.accounts.id.renderButton($("gbtn"), {theme:"outline", size:"large", text:"signin_with", shape:"rectangular", locale:"es"});
+    if (!tokenVigente()) google.accounts.id.prompt();
+  };
+  const s = document.createElement("script");
+  s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.defer = true;
+  s.onerror = () => mostrarGate("No se pudo cargar el inicio de sesión de Google. Revise su conexión o un bloqueador de contenido.");
+  document.head.append(s);
+}
+})();
+</script>
+</body>
+</html>
